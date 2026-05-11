@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="FootballApi/FootballApi.csproj" />
+    <Project Path="FotmobSync/FotmobSync.csproj" />
+  </Folder>
+</Solution>

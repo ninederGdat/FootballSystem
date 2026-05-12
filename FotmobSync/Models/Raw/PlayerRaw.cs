@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace FotmobSync.Models.Raw
@@ -33,6 +34,9 @@ namespace FotmobSync.Models.Raw
 
         [JsonPropertyName("status")]
         public string? Status { get; set; }
+
+        [JsonPropertyName("injuryInformation")]
+        public InjuryInformationRaw? InjuryInformation { get; set; }
 
         [JsonPropertyName("playerInformation")]
         public List<PlayerInformationRaw>? PlayerInformation { get; set; }
@@ -97,6 +101,20 @@ namespace FotmobSync.Models.Raw
     {
         [JsonPropertyName("teamId")]
         public int TeamId { get; set; }
+    }
+
+    /// <summary>Fotmob player injury payload when the player is injured.</summary>
+    public class InjuryInformationRaw
+    {
+        [JsonPropertyName("key")]
+        public JsonElement? Key { get; set; }
+
+        [JsonPropertyName("name")]
+        public string? Name { get; set; }
+
+        /// <summary>ISO date string and/or <c>{ "utcTime": "..." }</c> (Fotmob date shapes).</summary>
+        [JsonPropertyName("expectedReturn")]
+        public JsonElement? ExpectedReturn { get; set; }
     }
 
     public class PlayerInformationRaw

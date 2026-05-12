@@ -33,6 +33,8 @@ namespace FotmobSync.Models.Clean
         
         [Column("status")]
         public string Status { get; set; } = "Healthy";       // text DEFAULT 'Healthy'
+        [Column("injury_description")]
+        public string? InjuryDescription { get; set; }       // text, injury line when status is Injured
         [Column("created_at")]
         public DateTime CreatedAt { get; set; }               // timestamptz
         

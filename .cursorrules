@@ -1,0 +1,522 @@
+# FootballSystem Project Rules (`.cursorrules`)
+
+You are an expert **.NET 10 developer** and **Data Engineer** specialized in:
+- Modular Monolith architectures
+- ETL pipelines
+- Football data systems
+- PostgreSQL + Supabase ecosystems
+
+Follow these rules strictly when generating code or suggesting improvements for the `FootballSystem`.
+
+---
+
+# 1. General Principles (Clean Code & Minimalism)
+
+## KISS (Keep It Simple, Stupid)
+
+- Prioritize readability over unnecessary abstractions.
+- Use `.NET 10 Minimal APIs` for the `FootballApi` project.
+- Keep services lightweight and composable.
+
+---
+
+## Single Responsibility Principle
+
+### Clients
+Responsible only for:
+- Fetching raw external data
+
+### Mappers
+Responsible only for:
+- Transforming data
+- Mapping `Raw Models -> Clean Models`
+
+### Services
+Responsible only for:
+- Coordinating synchronization flows
+- Managing ETL orchestration
+
+---
+
+## Modern C# Standards
+
+Use modern `.NET 10 / C#` conventions:
+
+- File-scoped namespaces
+- Primary Constructors
+- Collection expressions when appropriate
+- `var` when the type is obvious
+- `required` properties for critical models
+- Nullable reference types enabled
+
+---
+
+## Asynchronous First
+
+All I/O operations must:
+- Use `async/await`
+- Include the `Async` suffix
+
+Examples:
+```csharp
+GetPlayerAsync()
+SyncTeamsAsync()
+UpsertMatchesAsync()
+```
+
+This applies to:
+- Database operations
+- HTTP requests
+- Web scraping
+- File operations
+
+---
+
+# 2. Naming Conventions
+
+## Models
+
+### Raw Models
+Use the `Raw` suffix/prefix for external source models.
+
+Examples:
+```csharp
+TeamRaw
+PlayerRaw
+SquadMemberRaw
+```
+
+### Clean Models
+Use the `Clean` suffix for database-ready entities.
+
+Examples:
+```csharp
+TeamClean
+PlayerClean
+MatchClean
+```
+
+---
+
+## Mappers
+
+Mapper methods must follow these naming patterns:
+
+```csharp
+ToClean()
+MapToPlayer()
+MapToTeam()
+```
+
+Example:
+```csharp
+PlayerMapper.ToClean(PlayerRaw raw)
+```
+
+---
+
+## Database Tables
+
+PostgreSQL naming conventions must remain in `snake_case`.
+
+Example:
+```csharp
+[Column("player_id")]
+public long Id { get; set; }
+```
+
+---
+
+## Clients
+
+### Standard HTTP Operations
+```csharp
+FotmobClient
+```
+
+### Browser Automation / Playwright
+```csharp
+FotmobBrowserClient
+```
+
+---
+
+# 3. ETL & Data Workflow Rules (Critical)
+
+## Mandatory ETL Flow
+
+Always follow the strict ETL pipeline:
+
+```text
+Fotmob API/Web
+    ↓
+Raw Model
+    ↓
+Mapper
+    ↓
+Clean Model
+    ↓
+Supabase/PostgreSQL (Upsert)
+```
+
+Never skip transformation layers.
+
+---
+
+## Position Dependency Rule
+
+When synchronizing players:
+
+- `positions` must exist first
+- `position_roles` must exist first
+
+before inserting/updating players.
+
+This prevents:
+- Foreign Key violations
+- Invalid tactical mappings
+
+---
+
+## Database Trigger Rule
+
+Never manually update:
+- `last_updated`
+- `updated_at`
+
+inside C# code.
+
+These fields are managed automatically via:
+- PostgreSQL triggers
+- PL/pgSQL functions
+
+Examples:
+```sql
+update_players_last_updated
+update_matches_last_updated
+```
+
+---
+
+## Scraping Strategy
+
+### Player Detail Scraping
+
+Use:
+- `Playwright`
+- Browser automation
+
+to bypass:
+- Cloudflare Turnstile protection
+
+---
+
+### Data Source Priority
+
+Extract player detail data from:
+
+```javascript
+__NEXT_DATA__
+```
+
+instead of parsing unstable HTML.
+
+---
+
+## Browser Resource Management
+
+Reuse browser instances using:
+
+```csharp
+SemaphoreSlim
+```
+
+to:
+- Reduce memory usage
+- Avoid browser explosion
+- Improve synchronization stability
+
+---
+
+# 4. Football Domain Logic
+
+## Master Data Priority
+
+The following entities are considered **Master Data**:
+
+- competitions
+- formations
+- positions
+- position_roles
+
+They must exist before processing:
+- Teams
+- Players
+- Matches
+- Lineups
+
+---
+
+## Match Status Rules
+
+Only use predefined statuses:
+
+```text
+UPCOMING
+ONGOING
+FINISHED
+```
+
+Avoid custom status strings.
+
+---
+
+## Lineup Integrity Rules
+
+`lineup_players` requires valid:
+
+- `player_id`
+- `position_code`
+- `role_id`
+
+before insertion.
+
+Never create partial lineup mappings.
+
+---
+
+## Tactical Coordinates
+
+Maintain:
+- `x_coord`
+- `y_coord`
+
+for:
+- Tactical visualization
+- Formation rendering
+- Frontend lineup display
+
+based on the `positions` schema.
+
+---
+
+## AI Readiness Requirements
+
+The following fields are mandatory for future:
+- AI scouting
+- Performance analysis
+- Recommendation systems
+
+### Required Fields
+
+```text
+market_value
+status
+```
+
+Requirements:
+- `market_value` → numeric
+- `status` → text
+
+Always keep them synchronized.
+
+---
+
+# 5. Technical Stack Specifics
+
+## Supabase / Postgrest
+
+Use:
+- `Postgrest`
+- `Upsert`
+- `OnConflict`
+
+for synchronization operations.
+
+Preferred pattern:
+
+```csharp
+.Upsert(entity, new QueryOptions
+{
+    OnConflict = "id"
+})
+```
+
+---
+
+## Quartz.NET
+
+All scheduled jobs must:
+- Reside inside the `Jobs/` folder
+- Use the `DailySync` prefix
+
+Examples:
+```csharp
+DailySyncPlayersJob
+DailySyncMatchesJob
+```
+
+---
+
+## Playwright Configuration
+
+### Production Rules
+
+Always use:
+
+```csharp
+Headless = true
+```
+
+in production environments.
+
+---
+
+### Browser Fingerprint Rules
+
+Use:
+- Mobile User-Agent
+- Chrome-based User-Agent
+
+to mimic realistic traffic patterns.
+
+---
+
+### Hydration Delay
+
+After page navigation:
+
+```csharp
+await Task.Delay(4000);
+```
+
+or:
+
+```csharp
+await Task.Delay(5000);
+```
+
+to ensure:
+- React hydration completion
+- `__NEXT_DATA__` availability
+
+before extraction begins.
+
+---
+
+# 6. Error Handling & Performance
+
+## Resilience
+
+Implement retry policies for:
+- Playwright navigation
+- Page loading
+- JSON extraction
+
+to mitigate scraper instability.
+
+---
+
+## Logging
+
+When `__NEXT_DATA__` parsing fails:
+
+- Log detailed diagnostics
+- Include fallback metadata
+- Preserve raw extraction context when possible
+
+---
+
+## Performance Optimization
+
+Use caching for:
+- Position codes
+- Position roles
+- Formation metadata
+
+to reduce redundant database calls during:
+- High-volume player synchronization
+- Daily ETL jobs
+
+---
+
+# 7. Architectural Philosophy
+
+The architecture prioritizes:
+
+- Simplicity
+- ETL correctness
+- Referential integrity
+- Tactical consistency
+- AI-ready football intelligence
+- Maintainable synchronization workflows
+
+The system is intentionally designed around:
+
+```text
+Raw Data
+    →
+Transformation
+    →
+Validated Clean Models
+    →
+Reliable Database Synchronization
+```
+
+instead of direct API-to-database insertion.
+
+---
+
+# 8. Why These Rules Exist
+
+## ETL-Centric Design
+
+The project heavily depends on:
+
+```text
+Raw → Mapper → Clean
+```
+
+pipelines.
+
+These rules ensure transformation layers are never skipped.
+
+---
+
+## Position Integrity
+
+Previous synchronization issues involving:
+- positions
+- position_roles
+
+caused Foreign Key violations.
+
+Explicit synchronization rules prevent these issues.
+
+---
+
+## Playwright Stability
+
+The browser automation layer requires:
+
+- Singleton browser management
+- Semaphore-based concurrency
+- Hydration delays
+
+to remain stable at scale.
+
+---
+
+## Database Minimalism
+
+PostgreSQL handles:
+- timestamps
+- triggers
+- cascade rules
+
+therefore:
+- C# services remain clean
+- synchronization logic stays minimal
+- infrastructure responsibilities stay separated
+
+Always reference files in the /docs folder before proposing any logic changes.

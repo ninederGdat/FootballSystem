@@ -4,6 +4,7 @@ using FotmobSync.Mappers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 
 namespace FotmobSync.Mappers;
 
@@ -16,12 +17,15 @@ public static class PlayerMapper
             return new PlayerClean { TeamId = teamId };
         }
 
+        var (status, injuryDescription) = MapPlayerStatus(raw);
+
         var clean = new PlayerClean
         {
             PlayerId = raw.Id,
             TeamId = teamId,
             Name = raw.Name?.Trim() ?? string.Empty,
-            Status = raw.Status?.Trim() ?? "Healthy",
+            Status = status,
+            InjuryDescription = injuryDescription,
             LastUpdated = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow,
 
@@ -59,6 +63,51 @@ public static class PlayerMapper
         }
 
         return clean;
+    }
+
+    /// <summary>
+    /// Fotmob: <see cref="PlayerRaw.InjuryInformation"/> null → Healthy; otherwise Injured with
+    /// <c>{name} (Expected return: {expectedReturn})</c> on <see cref="PlayerClean.InjuryDescription"/>.
+    /// </summary>
+    private static (string Status, string? InjuryDescription) MapPlayerStatus(PlayerRaw raw)
+    {
+        if (raw.InjuryInformation == null)
+            return ("Healthy", null);
+
+        var name = raw.InjuryInformation.Name?.Trim() ?? string.Empty;
+        var expectedReturn = FormatExpectedReturn(raw.InjuryInformation.ExpectedReturn);
+        return ("Injured", $"{name} (Expected return: {expectedReturn})");
+    }
+
+    private static string FormatExpectedReturn(JsonElement? expectedReturn)
+    {
+        if (!expectedReturn.HasValue ||
+            expectedReturn.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+            return string.Empty;
+
+        if (expectedReturn.Value.ValueKind == JsonValueKind.String)
+            return NormalizeReturnDateText(expectedReturn.Value.GetString());
+
+        if (expectedReturn.Value.ValueKind == JsonValueKind.Object &&
+            expectedReturn.Value.TryGetProperty("utcTime", out var utc) &&
+            utc.ValueKind == JsonValueKind.String)
+        {
+            return NormalizeReturnDateText(utc.GetString());
+        }
+
+        return string.Empty;
+    }
+
+    private static string NormalizeReturnDateText(string? utcTime)
+    {
+        if (string.IsNullOrWhiteSpace(utcTime))
+            return string.Empty;
+
+        var span = utcTime.AsSpan();
+        if (span.Length >= 10 && DateOnly.TryParse(span[..10], out var d))
+            return d.ToString("yyyy-MM-dd");
+
+        return utcTime.Trim();
     }
 
     private static decimal? GetLatestMarketValue(MarketValuesRaw? marketValues)

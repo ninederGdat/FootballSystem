@@ -1,9 +1,9 @@
-﻿using FotmobSync.Clients;
-using FotmobSync.Infrastructure;
+﻿using FotmobSync.Infrastructure;
 using FotmobSync.Infrastructure.External;
 using FotmobSync.Mappers;
 using FotmobSync.Models.Clean;
 using FotmobSync.Models.Raw;
+using FotmobSync.Modules;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
@@ -11,24 +11,27 @@ namespace FotmobSync.Services;
 
 public class FotmobEtlService : IFotmobEtlService
 {
-    private readonly FotmobClient _httpClient;           // Giữ lại để dùng cho Team
-    private readonly FotmobBrowserClient _browserClient; // Dùng cho Player Detail
-    private readonly PositionService _positionService;        // ← Thêm
+    private readonly FotmobBrowserClient _browserClient;
+    private readonly PositionService _positionService;
+    private readonly MatchService _matchService;
+    private readonly FotmobTeamDataModule _teamDataModule;
     private readonly Supabase.Client _supabase;
     private readonly ILogger<FotmobEtlService> _logger;
 
     public FotmobEtlService(
-        FotmobClient httpClient,
-        FotmobBrowserClient browserClient,        // ← Thêm vào đây
+        FotmobBrowserClient browserClient,
         SupabaseClientFactory factory,
         PositionService positionService,
+        MatchService matchService,
+        FotmobTeamDataModule teamDataModule,
         ILogger<FotmobEtlService> logger)
     {
-        _httpClient = httpClient;
         _browserClient = browserClient;
         _supabase = factory.CreateServiceRoleClient();
         _logger = logger;
         _positionService = positionService;
+        _matchService = matchService;
+        _teamDataModule = teamDataModule;
     }
 
     /// <summary>
@@ -40,8 +43,10 @@ public class FotmobEtlService : IFotmobEtlService
         {
             _logger.LogInformation("Starting full sync for team {TeamId}", teamId);
 
-            await SyncTeamAsync(teamId);
-            await SyncSquadAsync(teamId);
+            var snapshot = await _teamDataModule.LoadAsync(teamId);
+            await SyncTeamAsync(snapshot);
+            await _matchService.SyncMatchesAsync(snapshot);
+            await SyncSquadCoreAsync(snapshot);
 
             _logger.LogInformation("Completed full sync for team {TeamId}", teamId);
         }
@@ -51,19 +56,18 @@ public class FotmobEtlService : IFotmobEtlService
         }
     }
 
-    private async Task SyncTeamAsync(int teamId)
+    private async Task SyncTeamAsync(TeamDataSnapshot snapshot)
     {
         try
         {
-            _logger.LogInformation("Syncing team {TeamId}", teamId);
+            _logger.LogInformation("Syncing team {TeamId}", snapshot.TeamId);
 
-            using var doc = await _httpClient.GetTeamDataAsync(teamId);
-            var teamRaw = doc.RootElement.Deserialize<TeamRaw>(new JsonSerializerOptions
+            var teamRaw = snapshot.TeamRaw;
+            if (teamRaw == null)
             {
-                PropertyNameCaseInsensitive = true
-            });
-
-            if (teamRaw == null) return;
+                _logger.LogWarning("Team {TeamId}: deserialize TeamRaw null, bỏ qua upsert team.", snapshot.TeamId);
+                return;
+            }
 
             var teamClean = teamRaw.ToClean();
 
@@ -73,18 +77,31 @@ public class FotmobEtlService : IFotmobEtlService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error syncing team {TeamId}", teamId);
+            _logger.LogError(ex, "Error syncing team {TeamId}", snapshot.TeamId);
         }
     }
 
     /// <summary>
-    /// Đồng bộ toàn bộ squad của đội
+    /// Đồng bộ toàn bộ squad của đội (một lần gọi team API).
     /// </summary>
     public async Task SyncSquadAsync(int teamId)
     {
         try
         {
-            var players = await ExtractSquadAsync(teamId);
+            var snapshot = await _teamDataModule.LoadAsync(teamId);
+            await SyncSquadCoreAsync(snapshot);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error syncing squad for team {TeamId}", teamId);
+        }
+    }
+
+    private async Task SyncSquadCoreAsync(TeamDataSnapshot snapshot)
+    {
+        try
+        {
+            var players = ExtractSquadFromSnapshot(snapshot);
 
             _logger.LogInformation("Found {Count} players in squad. Starting detailed sync...", players.Count);
 
@@ -96,7 +113,7 @@ public class FotmobEtlService : IFotmobEtlService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error syncing squad for team {TeamId}", teamId);
+            _logger.LogError(ex, "Error syncing squad for team {TeamId}", snapshot.TeamId);
         }
     }
 
@@ -104,36 +121,8 @@ public class FotmobEtlService : IFotmobEtlService
     {
         try
         {
-            using var doc = await _httpClient.GetTeamDataAsync(teamId);
-            var rawTeam = doc.RootElement.Deserialize<TeamRaw>(new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
-
-            if (rawTeam?.Squad == null)
-                return new List<PlayerClean>();
-
-            var players = new List<PlayerClean>();
-
-            foreach (var group in rawTeam.Squad.Groups)
-            {
-                foreach (var p in group.Members)
-                {
-                    var playerClean = new PlayerClean
-                    {
-                        PlayerId = p.Id,
-                        TeamId = teamId,
-                        Name = p.Name ?? string.Empty,
-                        ShirtNumber = ParseShirtNumber(p.ShirtNumber),
-                        Nationality = p.CountryCode,
-                    };
-
-                    players.Add(playerClean);
-                }
-            }
-
-            _logger.LogInformation("Extracted {Count} players from team {TeamId}", players.Count, teamId);
-            return players;
+            var snapshot = await _teamDataModule.LoadAsync(teamId);
+            return ExtractSquadFromSnapshot(snapshot);
         }
         catch (Exception ex)
         {
@@ -142,9 +131,35 @@ public class FotmobEtlService : IFotmobEtlService
         }
     }
 
-    /// <summary>
-    /// Đồng bộ chi tiết cầu thủ - Sử dụng Playwright để bypass Turnstile
-    /// </summary>
+    private List<PlayerClean> ExtractSquadFromSnapshot(TeamDataSnapshot snapshot)
+    {
+        var rawTeam = snapshot.TeamRaw;
+        if (rawTeam?.Squad == null)
+            return new List<PlayerClean>();
+
+        var players = new List<PlayerClean>();
+
+        foreach (var group in rawTeam.Squad.Groups)
+        {
+            foreach (var p in group.Members)
+            {
+                var playerClean = new PlayerClean
+                {
+                    PlayerId = p.Id,
+                    TeamId = snapshot.TeamId,
+                    Name = p.Name ?? string.Empty,
+                    ShirtNumber = ParseShirtNumber(p.ShirtNumber),
+                    Nationality = p.CountryCode,
+                };
+
+                players.Add(playerClean);
+            }
+        }
+
+        _logger.LogInformation("Extracted {Count} players from team {TeamId}", players.Count, snapshot.TeamId);
+        return players;
+    }
+
     /// <summary>
     /// Đồng bộ chi tiết cầu thủ - Đã tích hợp PositionService
     /// </summary>
@@ -162,13 +177,11 @@ public class FotmobEtlService : IFotmobEtlService
                 return;
             }
 
-            // === UPSERT POSITION TRƯỚC (Giải quyết lỗi Foreign Key) ===
             if (playerRaw.PositionDescription != null)
             {
                 await _positionService.UpsertPositionAsync(playerRaw.PositionDescription);
             }
 
-            // === Transform và Upsert Player ===
             var playerClean = playerRaw.ToClean(teamId);
 
             await _supabase
@@ -183,6 +196,7 @@ public class FotmobEtlService : IFotmobEtlService
             _logger.LogError(ex, "❌ Error syncing player {PlayerId}", playerId);
         }
     }
+
     private int? ParseShirtNumber(JsonElement? element)
     {
         if (!element.HasValue) return null;

@@ -2,6 +2,7 @@ using FotmobSync;
 using FotmobSync.Clients;
 using FotmobSync.Infrastructure;
 using FotmobSync.Infrastructure.External;
+using FotmobSync.Modules;
 using FotmobSync.Jobs;
 using FotmobSync.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,8 +26,10 @@ builder.Logging.AddConsole();
 
 // Register services
 builder.Services.AddSingleton<SupabaseClientFactory>();
+builder.Services.AddSingleton<FotmobTeamDataModule>();
 builder.Services.AddScoped<IFotmobEtlService, FotmobEtlService>();
 builder.Services.AddSingleton<PositionService>();
+builder.Services.AddSingleton<MatchService>();
 // Register FotmobBrowserClient
 builder.Services.AddSingleton<FotmobBrowserClient>();
 // Register FotmobClient

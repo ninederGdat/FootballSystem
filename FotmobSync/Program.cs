@@ -1,60 +1,71 @@
-using FotmobSync;
 using FotmobSync.Clients;
 using FotmobSync.Infrastructure;
 using FotmobSync.Infrastructure.External;
-using FotmobSync.Modules;
 using FotmobSync.Jobs;
+using FotmobSync.Modules;
+using FotmobSync.Options;
 using FotmobSync.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Quartz;
 
-
 var builder = Host.CreateApplicationBuilder(args);
 
-// Configuration
 builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                      .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
                      .AddEnvironmentVariables();
 
-//Logging
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
-    
-    
-//// Hosted services
-//builder.Services.AddHostedService<Worker>();
 
-// Register services
+builder.Services.Configure<QuartzSyncOptions>(
+    builder.Configuration.GetSection(QuartzSyncOptions.SectionName));
+
 builder.Services.AddSingleton<SupabaseClientFactory>();
 builder.Services.AddSingleton<FotmobTeamDataModule>();
 builder.Services.AddScoped<IFotmobEtlService, FotmobEtlService>();
 builder.Services.AddSingleton<PositionService>();
 builder.Services.AddSingleton<MatchService>();
-// Register FotmobBrowserClient
 builder.Services.AddSingleton<FotmobBrowserClient>();
-// Register FotmobClient
 builder.Services.AddHttpClient<FotmobClient>();
 
-// Register Job Quartz 
+var quartzOptions = builder.Configuration
+    .GetSection(QuartzSyncOptions.SectionName)
+    .Get<QuartzSyncOptions>() ?? new QuartzSyncOptions();
+
 builder.Services.AddQuartz(q =>
 {
-   var jobKey = new JobKey("DailyFotmobSyncJob");
+    var jobKey = new JobKey("DailyFotmobSyncJob");
     q.AddJob<DailyFotmobSyncJob>(opts => opts.WithIdentity(jobKey));
-    q.AddTrigger(opts => opts
-     .ForJob(jobKey)
-     .WithIdentity("DailyFotmobSyncJob-trigger")
-     .StartNow()
-     .WithCronSchedule("0 0/15 * * * ?")
-     );                   
+
+    q.AddTrigger(opts =>
+    {
+        var trigger = opts
+            .WithIdentity("DailyFotmobSyncJob-trigger")
+            .ForJob(jobKey)
+            .WithCronSchedule(quartzOptions.CronSchedule);
+
+        // StartNow() runs the full ETL (Playwright + per-player delays) before the app feels "ready".
+        if (quartzOptions.RunOnStartup)
+            trigger.StartNow();
+    });
 });
 
-builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
+builder.Services.AddQuartzHostedService(options =>
+{
+    options.WaitForJobsToComplete = false;
+    options.StartDelay = TimeSpan.FromSeconds(quartzOptions.SchedulerStartDelaySeconds);
+});
 
 var host = builder.Build();
 
-// Set x-mas token for FotmobClient
 var fotmobClient = host.Services.GetRequiredService<FotmobClient>();
 fotmobClient.SetXMasToken("eyJib2R5Ijp7InVybCI6Ii9hcGkvZGF0YS9wbGF5ZXJEYXRhP2lkPTgwNzcyOSIsImNvZGUiOjE3NzgwMzgxMTUxOTUsImZvbyI6InByb2R1Y3Rpb246ZTRiODk0OTIxYzdlZmY4N2IyM2QxZTEyNzk1MjA2MzhjMmE1ZmVhMCJ9LCJzaWduYXR1cmUiOiIzQkU1RTcxNjI4NDBCMDhDQjNFNDkwMkQyMEZFNDkzRSJ9");
-Console.WriteLine("🚀 FotmobSync Service is starting...");
+
+var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("FotmobSync");
+logger.LogInformation(
+    "FotmobSync starting. Quartz: cron={Cron}, runOnStartup={RunOnStartup}, schedulerDelay={Delay}s",
+    quartzOptions.CronSchedule,
+    quartzOptions.RunOnStartup,
+    quartzOptions.SchedulerStartDelaySeconds);
 
 host.Run();

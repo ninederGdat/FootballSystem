@@ -6,6 +6,7 @@ using System.Text;
 
 namespace FotmobSync.Jobs
 {
+    [DisallowConcurrentExecution]
     public class DailyFotmobSyncJob : IJob
     {
         private readonly IFotmobEtlService _fotmobEtlService;

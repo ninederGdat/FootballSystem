@@ -34,18 +34,13 @@ namespace FotmobSync.Infrastructure
                         ? "Supabase:ServiceRoleKey is not configured"
                         : "Supabase:AnonKey is not configured");
             }
+            // ETL worker: no realtime WebSocket or token refresh — faster first DB use at job time.
             var options = new SupabaseOptions
             {
-                AutoRefreshToken = true,
-                AutoConnectRealtime = true,
-                // Thêm các tùy chọn khác nếu cần
+                AutoRefreshToken = false,
+                AutoConnectRealtime = false
             };
             return new Supabase.Client(supabaseUrl, supabaseKey, options);
-        }
-
-        private object CreateServiceRoleClient(bool useServiceRole)
-        {
-            throw new NotImplementedException();
         }
     }
 }

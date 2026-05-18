@@ -5,6 +5,7 @@ using FotmobSync.Models.Clean;
 using FotmobSync.Models.Raw;
 using FotmobSync.Modules;
 using Microsoft.Extensions.Logging;
+using Supabase.Postgrest;
 using System.Text.Json;
 
 namespace FotmobSync.Services;
@@ -70,6 +71,15 @@ public class FotmobEtlService : IFotmobEtlService
             }
 
             var teamClean = teamRaw.ToClean();
+
+            var existingTeam = await LoadExistingTeamAsync(teamClean.TeamId);
+            if (existingTeam != null && IsTeamPayloadUnchanged(teamClean, existingTeam))
+            {
+                _logger.LogInformation(
+                    "Team {TeamId} '{TeamName}': không đổi, bỏ qua upsert.",
+                    teamClean.TeamId, teamClean.Name);
+                return;
+            }
 
             await _supabase.From<TeamClean>().Upsert(teamClean);
 
@@ -177,12 +187,26 @@ public class FotmobEtlService : IFotmobEtlService
                 return;
             }
 
+            var playerClean = playerRaw.ToClean(teamId);
+
+            var existingPlayer = await LoadExistingPlayerAsync(playerClean.PlayerId);
+            if (existingPlayer != null && IsPlayerPayloadUnchanged(playerClean, existingPlayer))
+            {
+                _logger.LogInformation(
+                    "Player {PlayerId} '{PlayerName}': không đổi, bỏ qua upsert.",
+                    playerId, playerClean.Name);
+                return;
+            }
+
             if (playerRaw.PositionDescription != null)
             {
                 await _positionService.UpsertPositionAsync(playerRaw.PositionDescription);
             }
 
-            var playerClean = playerRaw.ToClean(teamId);
+            if (existingPlayer != null)
+                playerClean.CreatedAt = existingPlayer.CreatedAt;
+
+            playerClean.LastUpdated = DateTime.UtcNow;
 
             await _supabase
                 .From<PlayerClean>()
@@ -209,5 +233,52 @@ public class FotmobEtlService : IFotmobEtlService
             return num;
 
         return null;
+    }
+
+    private async Task<TeamClean?> LoadExistingTeamAsync(long teamId)
+    {
+        var response = await _supabase
+            .From<TeamClean>()
+            .Filter("team_id", Constants.Operator.Equals, teamId)
+            .Get();
+
+        return response.Models?.FirstOrDefault();
+    }
+
+    private static bool IsTeamPayloadUnchanged(TeamClean incoming, TeamClean existing)
+    {
+        return incoming.TeamId == existing.TeamId
+            && string.Equals(incoming.Name, existing.Name, StringComparison.Ordinal)
+            && string.Equals(incoming.LogoUrl, existing.LogoUrl, StringComparison.Ordinal)
+            && string.Equals(incoming.CoachName, existing.CoachName, StringComparison.Ordinal)
+            && string.Equals(incoming.CoachNationality, existing.CoachNationality, StringComparison.Ordinal);
+    }
+
+    private async Task<PlayerClean?> LoadExistingPlayerAsync(long playerId)
+    {
+        var response = await _supabase
+            .From<PlayerClean>()
+            .Filter("player_id", Constants.Operator.Equals, playerId)
+            .Get();
+
+        return response.Models?.FirstOrDefault();
+    }
+
+    private static bool IsPlayerPayloadUnchanged(PlayerClean incoming, PlayerClean existing)
+    {
+        return incoming.PlayerId == existing.PlayerId
+            && incoming.TeamId == existing.TeamId
+            && string.Equals(incoming.Name, existing.Name, StringComparison.Ordinal)
+            && incoming.ShirtNumber == existing.ShirtNumber
+            && incoming.DateOfBirth == existing.DateOfBirth
+            && string.Equals(incoming.Nationality, existing.Nationality, StringComparison.Ordinal)
+            && incoming.ContractUntil == existing.ContractUntil
+            && incoming.MarketValue == existing.MarketValue
+            && string.Equals(incoming.Status, existing.Status, StringComparison.Ordinal)
+            && string.Equals(incoming.InjuryDescription, existing.InjuryDescription, StringComparison.Ordinal)
+            && string.Equals(
+                incoming.PreferredPositionCode,
+                existing.PreferredPositionCode,
+                StringComparison.Ordinal);
     }
 }

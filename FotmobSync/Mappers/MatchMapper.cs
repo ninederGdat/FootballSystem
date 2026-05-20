@@ -5,45 +5,82 @@ using FotmobSync.Models.Raw;
 namespace FotmobSync.Mappers;
 
 /// <summary>
-/// Mapper từ <see cref="MatchRaw"/> (fixtures trong team API) sang <see cref="MatchClean"/>.
+/// Mapper từ <see cref="MatchRaw"/> sang <see cref="MatchClean"/> theo góc nhìn <paramref name="teamId"/>.
 /// </summary>
 public static class MatchMapper
 {
-    public static MatchClean? ToClean(this MatchRaw? raw)
+    public static MatchClean? ToClean(this MatchRaw? raw, long teamId)
     {
         if (raw == null || raw.Id == 0 || raw.Home == null || raw.Away == null)
             return null;
 
-        var now = DateTime.UtcNow;
+        var matchDate = ParseMatchDate(raw.Status?.UtcTime);
+        if (matchDate == null)
+            return null;
+
+        string? homeOrAway;
+        long opponentTeamId;
+        string opponentName;
+
+        if (raw.Home.Id == teamId)
+        {
+            homeOrAway = "home";
+            opponentTeamId = raw.Away.Id;
+            opponentName = raw.Away.Name?.Trim() ?? string.Empty;
+        }
+        else if (raw.Away.Id == teamId)
+        {
+            homeOrAway = "away";
+            opponentTeamId = raw.Home.Id;
+            opponentName = raw.Home.Name?.Trim() ?? string.Empty;
+        }
+        else
+            return null;
+
+        if (string.IsNullOrEmpty(opponentName))
+            opponentName = "Unknown";
+
+        var leagueId = raw.Tournament?.LeagueId;
         return new MatchClean
         {
             MatchId = raw.Id,
-            HomeTeamId = raw.Home.Id,
-            AwayTeamId = raw.Away.Id,
-            HomeTeamName = raw.Home.Name?.Trim(),
-            AwayTeamName = raw.Away.Name?.Trim(),
-            HomeScore = raw.Home.Score,
-            AwayScore = raw.Away.Score,
-            TournamentName = raw.Tournament?.Name?.Trim(),
-            LeagueId = raw.Tournament == null ? null : raw.Tournament.LeagueId,
-            KickoffUtc = ParseKickoffUtc(raw.Status?.UtcTime),
-            Started = raw.Status?.Started ?? false,
-            Finished = raw.Status?.Finished ?? false,
-            Cancelled = raw.Status?.Cancelled ?? false,
-            CreatedAt = now,
-            LastUpdated = now
+            TeamId = teamId,
+            OpponentTeamId = opponentTeamId,
+            OpponentName = opponentName,
+            CompetitionId = leagueId is > 0 ? leagueId : null,
+            CompetitionName = raw.Tournament?.Name?.Trim(),
+            MatchDate = matchDate.Value,
+            HomeOrAway = homeOrAway,
+            ScoreHome = raw.Home.Score,
+            ScoreAway = raw.Away.Score,
+            Status = MapStatus(raw.Status),
+            LastUpdated = DateTime.UtcNow
         };
     }
 
-    public static List<MatchClean> ToCleanList(this IEnumerable<MatchRaw?> rawList) =>
-        rawList.Select(r => r.ToClean()).Where(c => c != null).Select(c => c!).ToList();
+    public static List<MatchClean> ToCleanList(this IEnumerable<MatchRaw?> rawList, long teamId) =>
+        rawList.Select(r => r.ToClean(teamId)).Where(c => c != null).Select(c => c!).ToList();
 
-    private static DateTime? ParseKickoffUtc(string? utcTime)
+    /// <summary>UPCOMING | ONGOING | FINISHED (theo .cursorrules).</summary>
+    private static string MapStatus(MatchStatusRaw? status)
+    {
+        if (status == null)
+            return "UPCOMING";
+
+        if (status.Cancelled || status.Finished)
+            return "FINISHED";
+
+        if (status.Started)
+            return "ONGOING";
+
+        return "UPCOMING";
+    }
+
+    private static DateTime? ParseMatchDate(string? utcTime)
     {
         if (string.IsNullOrWhiteSpace(utcTime))
             return null;
 
-        // Không dùng RoundtripKind cùng AdjustToUniversal (ArgumentException trên .NET).
         if (DateTimeOffset.TryParse(
                 utcTime,
                 CultureInfo.InvariantCulture,

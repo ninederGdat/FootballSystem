@@ -1,58 +1,49 @@
-using System;
 using Supabase.Postgrest.Attributes;
 using Supabase.Postgrest.Models;
 
-namespace FotmobSync.Models.Clean
+namespace FotmobSync.Models.Clean;
+
+/// <summary>
+/// Clean model cho <c>public.matches</c> (một hàng theo góc nhìn đội <see cref="TeamId"/>).
+/// </summary>
+[Table("matches")]
+public class MatchClean : BaseModel
 {
-    /// <summary>
-    /// Clean model cho trận đấu (đồng bộ từ FotMob fixture).
-    /// </summary>
-    [Table("matches")]
-    public class MatchClean : BaseModel
-    {
-        [Column("match_id")]
-        public long MatchId { get; set; }
+    [Column("match_id")]
+    public long MatchId { get; set; }
 
-        [Column("home_team_id")]
-        public long HomeTeamId { get; set; }
+    [Column("team_id")]
+    public long? TeamId { get; set; }
 
-        [Column("away_team_id")]
-        public long AwayTeamId { get; set; }
+    [Column("opponent_team_id")]
+    public long? OpponentTeamId { get; set; }
 
-        [Column("home_team_name")]
-        public string? HomeTeamName { get; set; }
+    [Column("opponent_name")]
+    public string OpponentName { get; set; } = string.Empty;
 
-        [Column("away_team_name")]
-        public string? AwayTeamName { get; set; }
+    [Column("competition_id")]
+    public long? CompetitionId { get; set; }
 
-        [Column("home_score")]
-        public int? HomeScore { get; set; }
+    [Column("competition_name")]
+    public string? CompetitionName { get; set; }
 
-        [Column("away_score")]
-        public int? AwayScore { get; set; }
+    [Column("match_date")]
+    public DateTime MatchDate { get; set; }
 
-        [Column("tournament_name")]
-        public string? TournamentName { get; set; }
+    /// <summary><c>home</c> hoặc <c>away</c> (check constraint DB).</summary>
+    [Column("home_or_away")]
+    public string? HomeOrAway { get; set; }
 
-        [Column("league_id")]
-        public long? LeagueId { get; set; }
+    [Column("score_home")]
+    public int? ScoreHome { get; set; }
 
-        [Column("kickoff_utc")]
-        public DateTime? KickoffUtc { get; set; }
+    [Column("score_away")]
+    public int? ScoreAway { get; set; }
 
-        [Column("started")]
-        public bool Started { get; set; }
+    /// <summary><c>UPCOMING</c>, <c>ONGOING</c>, hoặc <c>FINISHED</c>.</summary>
+    [Column("status")]
+    public string Status { get; set; } = "UPCOMING";
 
-        [Column("finished")]
-        public bool Finished { get; set; }
-
-        [Column("cancelled")]
-        public bool Cancelled { get; set; }
-
-        [Column("created_at")]
-        public DateTime CreatedAt { get; set; }
-
-        [Column("last_updated")]
-        public DateTime LastUpdated { get; set; }
-    }
+    [Column("last_updated")]
+    public DateTime? LastUpdated { get; set; }
 }

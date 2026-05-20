@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using FotmobSync.Infrastructure;
 using FotmobSync.Mappers;
@@ -10,7 +11,7 @@ using Supabase.Postgrest;
 namespace FotmobSync.Services;
 
 /// <summary>
-/// Đọc fixtures từ payload team (<c>fixtures.allFixtures.fixtures</c>) và upsert vào Supabase.
+/// Đọc fixtures từ payload team và upsert vào <c>matches</c> / <c>competitions</c>.
 /// </summary>
 public class MatchService
 {
@@ -28,9 +29,6 @@ public class MatchService
         _logger = logger;
     }
 
-    /// <summary>
-    /// Trích xuất <see cref="MatchRaw"/> từ snapshot team (không gọi API).
-    /// </summary>
     public List<MatchRaw> ExtractFixtures(TeamDataSnapshot snapshot)
     {
         try
@@ -60,20 +58,19 @@ public class MatchService
         }
     }
 
-    /// <summary>
-    /// Upsert matches từ snapshot; bỏ qua bản ghi đã tồn tại và dữ liệu không đổi.
-    /// </summary>
     public async Task SyncMatchesAsync(TeamDataSnapshot snapshot)
     {
         try
         {
             var rawList = ExtractFixtures(snapshot);
-            var cleanList = rawList.ToCleanList();
+            var cleanList = rawList.ToCleanList(snapshot.TeamId);
             if (cleanList.Count == 0)
             {
                 _logger.LogInformation("Team {TeamId}: không có match hợp lệ để upsert.", snapshot.TeamId);
                 return;
             }
+
+            await EnsureCompetitionsAsync(cleanList);
 
             var existingById = await LoadExistingMatchesAsync(cleanList);
             var now = DateTime.UtcNow;
@@ -88,9 +85,6 @@ public class MatchService
                     skipped++;
                     continue;
                 }
-
-                if (existing != null)
-                    incoming.CreatedAt = existing.CreatedAt;
 
                 incoming.LastUpdated = now;
                 toUpsert.Add(incoming);
@@ -118,6 +112,30 @@ public class MatchService
         }
     }
 
+    private async Task EnsureCompetitionsAsync(List<MatchClean> matches)
+    {
+        var competitions = matches
+            .Where(m => m.CompetitionId.HasValue)
+            .GroupBy(m => m.CompetitionId!.Value)
+            .Select(g => new CompetitionClean
+            {
+                CompetitionId = g.Key,
+                Name = g.Select(m => m.CompetitionName).FirstOrDefault(n => !string.IsNullOrWhiteSpace(n))
+                       ?? $"Competition {g.Key}",
+                // DB: code NOT NULL — Fotmob không có mã riêng, dùng id làm mã ổn định.
+                Code = g.Key.ToString(CultureInfo.InvariantCulture),
+                LastUpdated = DateTime.UtcNow
+            })
+            .ToList();
+
+        if (competitions.Count == 0)
+            return;
+
+        await _supabase
+            .From<CompetitionClean>()
+            .Upsert(competitions, new() { OnConflict = "competition_id" });
+    }
+
     private async Task<Dictionary<long, MatchClean>> LoadExistingMatchesAsync(List<MatchClean> cleanList)
     {
         var ids = cleanList.Select(c => (object)c.MatchId).ToList();
@@ -131,18 +149,16 @@ public class MatchService
 
     private static bool IsMatchPayloadUnchanged(MatchClean incoming, MatchClean existing)
     {
-        return incoming.HomeTeamId == existing.HomeTeamId
-            && incoming.AwayTeamId == existing.AwayTeamId
-            && string.Equals(incoming.HomeTeamName, existing.HomeTeamName, StringComparison.Ordinal)
-            && string.Equals(incoming.AwayTeamName, existing.AwayTeamName, StringComparison.Ordinal)
-            && incoming.HomeScore == existing.HomeScore
-            && incoming.AwayScore == existing.AwayScore
-            && string.Equals(incoming.TournamentName, existing.TournamentName, StringComparison.Ordinal)
-            && incoming.LeagueId == existing.LeagueId
-            && incoming.KickoffUtc == existing.KickoffUtc
-            && incoming.Started == existing.Started
-            && incoming.Finished == existing.Finished
-            && incoming.Cancelled == existing.Cancelled;
+        return incoming.TeamId == existing.TeamId
+            && incoming.OpponentTeamId == existing.OpponentTeamId
+            && string.Equals(incoming.OpponentName, existing.OpponentName, StringComparison.Ordinal)
+            && incoming.CompetitionId == existing.CompetitionId
+            && string.Equals(incoming.CompetitionName, existing.CompetitionName, StringComparison.Ordinal)
+            && incoming.MatchDate == existing.MatchDate
+            && string.Equals(incoming.HomeOrAway, existing.HomeOrAway, StringComparison.Ordinal)
+            && incoming.ScoreHome == existing.ScoreHome
+            && incoming.ScoreAway == existing.ScoreAway
+            && string.Equals(incoming.Status, existing.Status, StringComparison.Ordinal);
     }
 
     private static JsonElement GetFixturesArray(JsonElement root)

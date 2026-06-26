@@ -45,7 +45,7 @@ public class FotmobEtlService : IFotmobEtlService
             _logger.LogInformation("Starting full sync for team {TeamId}", teamId);
 
             var snapshot = await _teamDataModule.LoadAsync(teamId);
-            await SyncTeamAsync(snapshot);
+            // await SyncTeamAsync(snapshot);
             await _matchService.SyncMatchesAsync(snapshot);
             await SyncSquadCoreAsync(snapshot);
 
@@ -57,7 +57,16 @@ public class FotmobEtlService : IFotmobEtlService
         }
     }
 
-    private async Task SyncTeamAsync(TeamDataSnapshot snapshot)
+    public async Task SyncTeamAsync(int teamId)
+    {
+        var snapshot =
+            await _teamDataModule.LoadAsync(teamId);
+
+        await SyncTeamCoreAsync(snapshot);
+    }
+
+    private async Task SyncTeamCoreAsync(
+        TeamDataSnapshot snapshot)
     {
         try
         {
@@ -90,7 +99,6 @@ public class FotmobEtlService : IFotmobEtlService
             _logger.LogError(ex, "Error syncing team {TeamId}", snapshot.TeamId);
         }
     }
-
     /// <summary>
     /// Đồng bộ toàn bộ squad của đội (một lần gọi team API).
     /// </summary>
@@ -126,6 +134,15 @@ public class FotmobEtlService : IFotmobEtlService
             _logger.LogError(ex, "Error syncing squad for team {TeamId}", snapshot.TeamId);
         }
     }
+
+
+    public async Task SyncMatchesAsync(int teamId)
+{
+    var snapshot =
+        await _teamDataModule.LoadAsync(teamId);
+
+    await _matchService.SyncMatchesAsync(snapshot);
+}
 
     public async Task<List<PlayerClean>> ExtractSquadAsync(int teamId)
     {

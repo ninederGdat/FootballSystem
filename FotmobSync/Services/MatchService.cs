@@ -5,6 +5,7 @@ using FotmobSync.Mappers;
 using FotmobSync.Models.Clean;
 using FotmobSync.Models.Raw;
 using FotmobSync.Modules;
+using FotmobSync.Workflows;
 using Microsoft.Extensions.Logging;
 using Supabase.Postgrest;
 
@@ -13,7 +14,7 @@ namespace FotmobSync.Services;
 /// <summary>
 /// Đọc fixtures từ payload team và upsert vào <c>matches</c> / <c>competitions</c>.
 /// </summary>
-public class MatchService
+public class MatchService : IMatchSyncService
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -22,11 +23,15 @@ public class MatchService
 
     private readonly Supabase.Client _supabase;
     private readonly ILogger<MatchService> _logger;
+    private readonly ILineupBackfillService _lineupBackfillService;
 
-    public MatchService(SupabaseClientFactory factory, ILogger<MatchService> logger)
+    public MatchService(SupabaseClientFactory factory,
+                        ILogger<MatchService> logger,
+                        ILineupBackfillService  lineupBackfillService)
     {
         _supabase = factory.CreateServiceRoleClient();
         _logger = logger;
+         _lineupBackfillService = lineupBackfillService;
     }
 
     public List<MatchRaw> ExtractFixtures(TeamDataSnapshot snapshot)
@@ -58,12 +63,20 @@ public class MatchService
         }
     }
 
+    public async Task SyncAsync(TeamDataSnapshot snapshot)
+    {
+        await SyncMatchesAsync(snapshot);
+    }
+
     public async Task SyncMatchesAsync(TeamDataSnapshot snapshot)
     {
         try
         {
             var rawList = ExtractFixtures(snapshot);
             var cleanList = rawList.ToCleanList(snapshot.TeamId);
+            cleanList = cleanList
+                    .OrderBy(x => x.MatchDate)
+                    .ToList();
             if (cleanList.Count == 0)
             {
                 _logger.LogInformation("Team {TeamId}: không có match hợp lệ để upsert.", snapshot.TeamId);
@@ -90,27 +103,40 @@ public class MatchService
                 toUpsert.Add(incoming);
             }
 
-            if (toUpsert.Count == 0)
+            if (toUpsert.Count > 0)
+            {
+                await _supabase
+                    .From<MatchClean>()
+                    .Upsert(
+                        toUpsert,
+                        new() { OnConflict = "match_id" });
+
+                _logger.LogInformation(
+                    "Team {TeamId}: đã upsert {Upserted} match (bỏ qua không đổi: {Skipped}).",
+                    snapshot.TeamId,
+                    toUpsert.Count,
+                    skipped);
+            }
+            else
             {
                 _logger.LogInformation(
                     "Team {TeamId}: không upsert — {Total} match đã khớp DB (bỏ qua {Skipped}).",
-                    snapshot.TeamId, cleanList.Count, skipped);
-                return;
+                    snapshot.TeamId,
+                    cleanList.Count,
+                    skipped);
             }
 
-            await _supabase
-                .From<MatchClean>()
-                .Upsert(toUpsert, new() { OnConflict = "match_id" });
-
-            _logger.LogInformation(
-                "Team {TeamId}: đã upsert {Upserted} match (bỏ qua không đổi: {Skipped}).",
-                snapshot.TeamId, toUpsert.Count, skipped);
+            await _lineupBackfillService.SyncMissingAsync(snapshot.TeamId);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Lỗi sync matches cho team {TeamId}", snapshot.TeamId);
         }
     }
+
+
+
+    /// Helper
 
     private async Task EnsureCompetitionsAsync(List<MatchClean> matches)
     {

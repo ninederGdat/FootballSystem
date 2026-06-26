@@ -1,0 +1,19 @@
+using Supabase.Postgrest.Attributes;
+using Supabase.Postgrest.Models;
+
+namespace FotmobSync.Models.Clean;
+
+[Table("lineups")]
+public class LineupUpsert : BaseModel
+{
+    [Column("match_id")]
+    public long MatchId { get; set; }
+    [Column("type")]
+    public string Type { get; set; } = default!;
+    [Column("formation_id")]
+    public long? FormationId { get; set; }
+    [Column("created_at")]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    [Column("updated_at")]
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}

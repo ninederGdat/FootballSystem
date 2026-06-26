@@ -55,6 +55,13 @@ public class FotmobClient
         return await GetJsonAsync(url, $"Player {playerId}");
     }
 
+
+    public async Task<JsonDocument> GetMatchDetailDataAsync(int matchId)
+    {
+        var url = $"https://www.fotmob.com/api/data/matchDetails?matchId={matchId}";
+        return await GetJsonAsync(url, $"Match Details {matchId}");
+    }
+
     private async Task<JsonDocument> GetJsonAsync(string url, string context)
     {
         try

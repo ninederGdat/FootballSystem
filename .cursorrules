@@ -519,4 +519,11 @@ therefore:
 - synchronization logic stays minimal
 - infrastructure responsibilities stay separated
 
+# 9. Reference Management & Knowledge Base
+
+- **Source of Truth:** Always prioritize information in the `/docs` folder for Business Logic and Database Schemas.
+- **Context Loading:** Before generating Mappers or Services, check `@docs/databse_schema.md` and `@docs/business_logic.md`.
+- **JSON Consistency:** Use the JSON samples in `/docs/json_samples/` as the primary reference for property naming and types.
+
+
 Always reference files in the /docs folder before proposing any logic changes.

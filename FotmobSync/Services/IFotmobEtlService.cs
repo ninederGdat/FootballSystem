@@ -1,21 +1,54 @@
 ﻿using FotmobSync.Models.Clean;
+using FotmobSync.Modules;
 
 namespace FotmobSync.Services;
 
 public interface IFotmobEtlService
 {
-    /// <summary>
-    /// Đồng bộ thông tin đội bóng + toàn bộ squad (cầu thủ)
-    /// </summary>
-    Task SyncTeamAndSquadAsync(int teamId);
+    Task SyncTeamAsync(int teamId);
 
-    /// <summary>
-    /// Đồng bộ thông tin chi tiết của một cầu thủ từ Player Detail API
-    /// </summary>
+    Task SyncMatchesAsync(int teamId);
+
+    Task SyncSquadAsync(int teamId);
+
     Task SyncPlayerAsync(int playerId, long teamId);
+}
+public interface ITeamSyncService
+{
+    Task SyncAsync(TeamDataSnapshot snapshot);
+}
 
-    /// <summary>
-    /// Trích xuất danh sách cầu thủ từ Team API (đã có sẵn)
-    /// </summary>
-    Task<List<PlayerClean>> ExtractSquadAsync(int teamId);
+public interface IMatchSyncService
+{
+    Task SyncAsync(TeamDataSnapshot snapshot);
+}
+
+public interface ISquadSyncService
+{
+    Task SyncAsync(TeamDataSnapshot snapshot);
+}
+
+public interface IPlayerSyncService
+{
+    Task SyncAsync(
+        int playerId,
+        long teamId);
+}
+
+public interface ILineupSyncService
+{
+    Task<LineupClean?> SyncAsync(
+        MatchDetailSnapshot snapshot);
+}
+
+public interface ILineupPlayerSyncService
+{
+    Task SyncAsync(
+        MatchDetailSnapshot snapshot,
+        long lineupId);
+}
+
+public interface ILineupBackfillService
+{
+    Task SyncMissingAsync(int teamId);
 }

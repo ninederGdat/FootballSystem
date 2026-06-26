@@ -5,6 +5,7 @@ using FotmobSync.Jobs;
 using FotmobSync.Modules;
 using FotmobSync.Options;
 using FotmobSync.Services;
+using FotmobSync.Workflows;
 using Microsoft.Extensions.DependencyInjection;
 using Quartz;
 
@@ -22,11 +23,30 @@ builder.Services.Configure<QuartzSyncOptions>(
 
 builder.Services.AddSingleton<SupabaseClientFactory>();
 builder.Services.AddSingleton<FotmobTeamDataModule>();
+builder.Services.AddSingleton<FotmobMatchDetailModule>();
+
 builder.Services.AddScoped<IFotmobEtlService, FotmobEtlService>();
+
+// Sync Services
+builder.Services.AddScoped<ITeamSyncService, TeamSyncService>();
+builder.Services.AddScoped<IMatchSyncService, MatchService>();
+builder.Services.AddScoped<ISquadSyncService, SquadSyncService>();
+builder.Services.AddScoped<IPlayerSyncService, PlayerSyncService>();
+builder.Services.AddScoped<ILineupSyncService, LineupSyncService>();
+builder.Services.AddScoped<ILineupPlayerSyncService, LineupPlayerSyncService>();
+builder.Services.AddScoped<ILineupBackfillService, LineupBackfillService>();
+
+// Lookup Services
+builder.Services.AddSingleton<FormationService>();
 builder.Services.AddSingleton<PositionService>();
-builder.Services.AddSingleton<MatchService>();
+
 builder.Services.AddSingleton<FotmobBrowserClient>();
 builder.Services.AddHttpClient<FotmobClient>();
+
+// Register workflow
+builder.Services.AddScoped<ClubRefreshWorkflow>();
+builder.Services.AddScoped<MatchLineupWorkflow>();
+
 
 var quartzOptions = builder.Configuration
     .GetSection(QuartzSyncOptions.SectionName)
@@ -37,17 +57,15 @@ builder.Services.AddQuartz(q =>
     var jobKey = new JobKey("DailyFotmobSyncJob");
     q.AddJob<DailyFotmobSyncJob>(opts => opts.WithIdentity(jobKey));
 
-    q.AddTrigger(opts =>
-    {
-        var trigger = opts
-            .WithIdentity("DailyFotmobSyncJob-trigger")
-            .ForJob(jobKey)
-            .WithCronSchedule(quartzOptions.CronSchedule);
+    q.AddTrigger(t => t
+    .ForJob(jobKey)
+    .WithIdentity("startup-trigger")
+    .StartNow());
 
-        // StartNow() runs the full ETL (Playwright + per-player delays) before the app feels "ready".
-        if (quartzOptions.RunOnStartup)
-            trigger.StartNow();
-    });
+    q.AddTrigger(t => t
+        .ForJob(jobKey)
+        .WithIdentity("cron-trigger")
+        .WithCronSchedule(quartzOptions.CronSchedule));
 });
 
 builder.Services.AddQuartzHostedService(options =>
@@ -67,5 +85,19 @@ logger.LogInformation(
     quartzOptions.CronSchedule,
     quartzOptions.RunOnStartup,
     quartzOptions.SchedulerStartDelaySeconds);
+
+
+var lifetime = host.Services.GetRequiredService<IHostApplicationLifetime>();
+
+lifetime.ApplicationStarted.Register(() =>
+{
+    logger.LogInformation("APPLICATION STARTED");
+});
+
+lifetime.ApplicationStopping.Register(() =>
+{
+    logger.LogInformation("APPLICATION STOPPING");
+});
+
 
 host.Run();

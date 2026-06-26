@@ -11,7 +11,7 @@ public class QuartzSyncOptions
     /// When true, fire once immediately when the scheduler starts (slow: full squad + Playwright).
     /// When false, first run is at the next cron tick only.
     /// </summary>
-    public bool RunOnStartup { get; set; } = false;
+    public bool RunOnStartup { get; set; } = true;
 
     /// <summary>Delay before the Quartz scheduler starts (lets the host finish boot logging).</summary>
     public int SchedulerStartDelaySeconds { get; set; } = 2;

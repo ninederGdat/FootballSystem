@@ -1,4 +1,5 @@
 ﻿using FotmobSync.Services;
+using FotmobSync.Workflows;
 using Quartz;
 using System;
 using System.Collections.Generic;
@@ -9,12 +10,13 @@ namespace FotmobSync.Jobs
     [DisallowConcurrentExecution]
     public class DailyFotmobSyncJob : IJob
     {
-        private readonly IFotmobEtlService _fotmobEtlService;
+        private readonly ClubRefreshWorkflow _workflow;
         private readonly ILogger<DailyFotmobSyncJob> _logger;
 
-        public DailyFotmobSyncJob(IFotmobEtlService fotmobEtlService, ILogger<DailyFotmobSyncJob> logger)
+        public DailyFotmobSyncJob(ClubRefreshWorkflow workflow,
+                                ILogger<DailyFotmobSyncJob> logger)
         {
-            _fotmobEtlService = fotmobEtlService;
+            _workflow = workflow;
             _logger = logger;
         }
 
@@ -29,8 +31,8 @@ namespace FotmobSync.Jobs
                 foreach (var teamId in teamsToSync)
                 {
                     _logger.LogInformation("Syncing team with ID {TeamId}", teamId);
-                    await _fotmobEtlService.SyncTeamAndSquadAsync(teamId);
-                }   
+                    await _workflow.ExecuteAsync(teamId);
+                }
             }
             catch (Exception ex)
             {

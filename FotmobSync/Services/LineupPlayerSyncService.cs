@@ -1,4 +1,5 @@
 using FotmobSync.Infrastructure;
+using FotmobSync.Infrastructure.External.Fotmob.Mapping;
 using FotmobSync.Models.Clean;
 using FotmobSync.Models.Raw;
 using FotmobSync.Modules;
@@ -7,23 +8,23 @@ using FotmobSync.Services;
 public class LineupPlayerSyncService : ILineupPlayerSyncService
 {
     private readonly Supabase.Client _supabase;
-
+    private readonly IFotmobPositionMapper _positionMapper;
     private readonly ILogger<LineupPlayerSyncService>
         _logger;
 
     public LineupPlayerSyncService(
         SupabaseClientFactory factory,
+        IFotmobPositionMapper positionMapper,
         ILogger<LineupPlayerSyncService> logger)
     {
         _supabase =
             factory.CreateServiceRoleClient();
-
+        _positionMapper = positionMapper;
         _logger = logger;
     }
 
 
-    public async Task SyncAsync(
-    MatchDetailSnapshot snapshot,
+    public async Task SyncAsync(MatchDetailSnapshot snapshot,
     long lineupId)
     {
         var team = GetTeam(snapshot);
@@ -60,6 +61,7 @@ public class LineupPlayerSyncService : ILineupPlayerSyncService
 
         foreach (var item in players)
         {
+
             var p = item.Player;
 
             if (!existingIds.Contains(p.PlayerId))
@@ -71,6 +73,22 @@ public class LineupPlayerSyncService : ILineupPlayerSyncService
                 continue;
             }
 
+            string? positionCode = null;
+
+            if (p.PositionId.HasValue)
+            {
+                if (_positionMapper.TryMap(p.PositionId.Value, out var mapped))
+                {
+                    positionCode = mapped;
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Unknown PositionId {PositionId}",
+                        p.PositionId.Value);
+                }
+            }
+
             entities.Add(
                 new LineupPlayerUpsert
                 {
@@ -78,13 +96,23 @@ public class LineupPlayerSyncService : ILineupPlayerSyncService
                     PlayerId = p.PlayerId,
                     ShirtNumber = ParseShirtNumber(p.ShirtNumber),
                     IsStarter = item.IsStarter,
-                    PositionCode = null,
+                    PositionCode = positionCode,
                     RoleId = null,
                     CustomX = p.HorizontalLayout?.X,
                     CustomY = p.HorizontalLayout?.Y
                 });
-        }
 
+                  _logger.LogInformation("Player: {Name} ({PlayerId}) | PositionId={PositionId}  | PositionCode={positionCode} | | UsualPositionId={UsualPositionId} | X={X} | Y={Y}",
+            p.Name,
+            p.PlayerId,
+            p.PositionId,
+            positionCode,
+            p.UsualPlayingPositionId,
+            p.HorizontalLayout?.X,
+            p.HorizontalLayout?.Y);
+
+        }
+      
 
         await _supabase
          .From<LineupPlayerUpsert>()
@@ -95,14 +123,7 @@ public class LineupPlayerSyncService : ILineupPlayerSyncService
                  OnConflict = "lineup_id,player_id"
              });
 
-        _logger.LogInformation(
-            "Match {MatchId}: synced {Count} lineup players.",
-            snapshot.MatchId,
-            entities.Count);
 
-        _logger.LogInformation(
-            "LineupPlayerSync lineupId={LineupId}",
-            lineupId);
     }
 
 

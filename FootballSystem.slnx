@@ -3,4 +3,7 @@
     <Project Path="FootballApi/FootballApi.csproj" />
     <Project Path="FotmobSync/FotmobSync.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="FotmobSync.Tests/FotmobSync.Tests.csproj" />
+  </Folder>
 </Solution>

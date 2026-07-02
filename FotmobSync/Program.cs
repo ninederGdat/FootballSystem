@@ -1,3 +1,4 @@
+using FotmobSync.Infrastructure.External.Fotmob.Mapping;
 using FotmobSync.Clients;
 using FotmobSync.Infrastructure;
 using FotmobSync.Infrastructure.External;
@@ -47,6 +48,8 @@ builder.Services.AddHttpClient<FotmobClient>();
 builder.Services.AddScoped<ClubRefreshWorkflow>();
 builder.Services.AddScoped<MatchLineupWorkflow>();
 
+// Mapping Services
+builder.Services.AddSingleton<IFotmobPositionMapper, FotmobPositionMapper>();
 
 var quartzOptions = builder.Configuration
     .GetSection(QuartzSyncOptions.SectionName)

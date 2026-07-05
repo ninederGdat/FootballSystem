@@ -79,6 +79,8 @@ Documentation for raw JSON structures extracted from Fotmob used in the **Footba
 
 ---
 
+
+
 ## 2. Team Raw
 
 **Source**: Team detail endpoint
@@ -125,6 +127,8 @@ Documentation for raw JSON structures extracted from Fotmob used in the **Footba
 
 ---
 
+
+
 ## 3. Match Raw
 
 **Source**: Fixtures section in team data (`fixtures.allFixtures.fixtures[]`)
@@ -158,6 +162,8 @@ Documentation for raw JSON structures extracted from Fotmob used in the **Footba
 ```
 
 ---
+
+
 
 ## 4. Match Lineup Raw
 
@@ -254,6 +260,8 @@ Documentation for raw JSON structures extracted from Fotmob used in the **Footba
 
 ---
 
+
+
 ## 5. Lineup Player Raw (Recommended Flat Structure)
 
 **Purpose**: Extracted from content.lineup.homeTeam.starters, subs, etc.
@@ -262,34 +270,30 @@ Documentation for raw JSON structures extracted from Fotmob used in the **Footba
 ```json
 
 {
-  "playerId": 1021382,
-  "name": "João Pedro",
-  "shirtNumber": 20,
-  "positionId": 115,
-  "usualPlayingPositionId": 3,
-  "countryCode": "BRA",
-  "isStarter": true,
-  "horizontalX": 0.87,
-  "horizontalY": 0.5,
-  "verticalX": 0.5,
-  "verticalY": 0.87,
-  "marketValue": 76047637,
-  "performance": {
-    "rating": 7.7,
-    "events": [
-      { "type": "goal" },
-      { "type": "assist" }
-    ],
-    "fantasyScore": "6+2",
-    "playerOfTheMatch": true
-  },
-  "substitution": {
-    "minuteIn": null,
-    "minuteOut": null,
-    "reason": null
-  }
-}
-
+        "id": 789571,
+        "name": "Robert Sánchez",
+        "shirtNumber": 1,
+        "positionId": 11,
+        "usualPlayingPositionId": 0,
+        "countryName": "Spain",
+        "countryCode": "ESP",
+        "horizontalLayout": {
+          "x": 0.1,
+          "y": 0.5
+        },
+        "marketValue": 19688528,
+        "performance": {
+          "rating": 5.8,
+          "substitutionEvents": [
+            {
+              "time": 66,
+              "type": "subOut",
+              "reason": "injury"
+            }
+          ],
+          "fantasyScore": "1"
+        }
+      }
 ```
 
 ---

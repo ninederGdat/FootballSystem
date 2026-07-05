@@ -9,6 +9,8 @@ using FotmobSync.Services;
 using FotmobSync.Workflows;
 using Microsoft.Extensions.DependencyInjection;
 using Quartz;
+using FotmobSync.Infrastructure.Resolvers.PositionRole;
+using FotmobSync.Infrastructure.Resolvers.PlayingTime;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -50,6 +52,9 @@ builder.Services.AddScoped<MatchLineupWorkflow>();
 
 // Mapping Services
 builder.Services.AddSingleton<IFotmobPositionMapper, FotmobPositionMapper>();
+builder.Services.AddSingleton<IPositionRoleResolver,PositionRoleResolver>();
+builder.Services.AddSingleton<IPlayingTimeResolver, PlayingTimeResolver>();
+
 
 var quartzOptions = builder.Configuration
     .GetSection(QuartzSyncOptions.SectionName)
@@ -102,5 +107,9 @@ lifetime.ApplicationStopping.Register(() =>
     logger.LogInformation("APPLICATION STOPPING");
 });
 
+var resolver = host.Services
+    .GetRequiredService<IPositionRoleResolver>();
+
+await resolver.InitializeAsync();
 
 host.Run();

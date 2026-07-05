@@ -9,6 +9,9 @@ namespace FotmobSync.Models.Clean
     [Table("position_roles")]
     public class PositionRoleClean : BaseModel
     {
+        [PrimaryKey("id", false)]
+        [Column("id")]
+        public int Id { get; set; }
         [Column("position_code")]
         public string PositionCode { get; set; } = string.Empty;
         [Column("role_name")]
@@ -17,5 +20,7 @@ namespace FotmobSync.Models.Clean
         public string? RoleShort { get; set; }
         [Column("is_premium")]
         public bool IsPremium { get; set; } = false;
+        [Column("is_default")]
+        public bool IsDefault { get; set; } = false;
     }
 }

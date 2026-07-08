@@ -1,5 +1,4 @@
-using System.Text.Json;
-using FotmobSync.Models.Clean;
+using FotmobSync.Models.Sync;
 using FotmobSync.Modules;
 using FotmobSync.Services;
 
@@ -16,61 +15,63 @@ public class SquadSyncService : ISquadSyncService
         _logger = logger;
     }
 
-    public async Task SyncAsync(
-        TeamDataSnapshot snapshot)
+   public async Task SyncAsync(
+    TeamDataSnapshot snapshot,
+    CancellationToken cancellationToken = default)
+{
+    var players = ExtractPlayers(snapshot);
+
+    foreach (var player in players)
     {
-        var players =
-            ExtractPlayers(snapshot);
+        cancellationToken.ThrowIfCancellationRequested();
 
-        foreach (var player in players)
+        try
         {
-            await _playerSyncService.SyncAsync(
-                (int)player.PlayerId,
-                player.TeamId);
+            _logger.LogInformation(
+                "Syncing player {PlayerId} - {PlayerName}",
+                player.PlayerId,
+                player.Name);
 
-            await Task.Delay(6000);
+            await _playerSyncService.SyncAsync(
+                player.PlayerId,
+                player.TeamId,
+                cancellationToken);
+
+            await Task.Delay(
+                TimeSpan.FromSeconds(6),
+                cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Failed syncing player {PlayerId}",
+                player.PlayerId);
         }
     }
+}
 
-    private List<PlayerClean> ExtractPlayers(
+    private static List<SquadPlayerRef> ExtractPlayers(
         TeamDataSnapshot snapshot)
     {
-        var rawTeam = snapshot.TeamRaw;
+        var squad = snapshot.TeamRaw?.Squad;
 
-        if (rawTeam?.Squad == null)
+        if (squad == null)
             return [];
 
-        var players = new List<PlayerClean>();
-
-        foreach (var group in rawTeam.Squad.Groups)
-        {
-            foreach (var p in group.Members)
-            {
-                players.Add(new PlayerClean
-                {
-                    PlayerId = p.Id,
-                    TeamId = snapshot.TeamId,
-                    Name = p.Name ?? string.Empty,
-                    ShirtNumber = ParseShirtNumber(p.ShirtNumber),
-                    Nationality = p.CountryCode
-                });
-            }
-        }
-
-        return players;
-    }
-
-     private int? ParseShirtNumber(JsonElement? element)
-    {
-        if (!element.HasValue) return null;
-        var el = element.Value;
-
-        if (el.ValueKind == JsonValueKind.Number)
-            return el.GetInt32();
-
-        if (el.ValueKind == JsonValueKind.String && int.TryParse(el.GetString(), out int num))
-            return num;
-
-        return null;
+        return squad.Groups
+            // Bỏ nhóm Coach
+            .Where(g => !string.Equals(g.Title, "Coach",
+                StringComparison.OrdinalIgnoreCase))
+            .SelectMany(g => g.Members)
+            .Select(p => new SquadPlayerRef(
+                p.Id,
+                snapshot.TeamId,
+                p.Name ?? string.Empty))
+            .ToList();
     }
 }

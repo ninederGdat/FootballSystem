@@ -1,5 +1,5 @@
 using System.Text.Json;
-using FotmobSync.Infrastructure;
+using FootballSystem.Shared.Infrastructure;
 using FotmobSync.Models.Clean;
 using FotmobSync.Modules;
 using FotmobSync.Services;

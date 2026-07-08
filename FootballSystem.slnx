@@ -6,4 +6,5 @@
   <Folder Name="/tests/">
     <Project Path="FotmobSync.Tests/FotmobSync.Tests.csproj" />
   </Folder>
+  <Project Path="FootballSystem.Shared/FootballSystem.Shared.csproj" />
 </Solution>

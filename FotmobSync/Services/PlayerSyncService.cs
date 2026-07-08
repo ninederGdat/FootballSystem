@@ -3,7 +3,7 @@ using FotmobSync.Services;
 using FotmobSync.Mappers;
 using FotmobSync.Models.Clean;
 using Supabase.Postgrest;
-using FotmobSync.Infrastructure;
+using FootballSystem.Shared.Infrastructure;
 public class PlayerSyncService
     : IPlayerSyncService
 {
@@ -26,18 +26,19 @@ public class PlayerSyncService
 
 
     public async Task SyncAsync(
-        int playerId,
-        long teamId)
+    long playerId,
+    long teamId,
+    CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogInformation("🔄 Syncing detailed info for player {PlayerId}", playerId);
+            _logger.LogInformation("Syncing detailed info for player {PlayerId}", playerId);
 
             var playerRaw = await _browserClient.GetPlayerDetailAsync(playerId);
 
             if (playerRaw == null)
             {
-                _logger.LogWarning("⚠️ Cannot get data for player {PlayerId}", playerId);
+                _logger.LogWarning("Cannot get data for player {PlayerId}", playerId);
                 return;
             }
 
@@ -66,12 +67,12 @@ public class PlayerSyncService
                 .From<PlayerClean>()
                 .Upsert(playerClean, new() { OnConflict = "player_id" });
 
-            _logger.LogInformation("✅ Player '{PlayerName}' (ID: {PlayerId}) synced successfully",
+            _logger.LogInformation("Player '{PlayerName}' (ID: {PlayerId}) synced successfully",
                 playerClean.Name, playerId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Error syncing player {PlayerId}", playerId);
+            _logger.LogError(ex, "Error syncing player {PlayerId}", playerId);
         }
     }
 

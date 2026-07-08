@@ -1,4 +1,5 @@
-﻿using FotmobSync.Infrastructure;
+﻿using FootballSystem.Shared.Infrastructure;
+using FotmobSync.Infrastructure;
 using FotmobSync.Infrastructure.External;
 using FotmobSync.Mappers;
 using FotmobSync.Models.Clean;

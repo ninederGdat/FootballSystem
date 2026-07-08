@@ -35,7 +35,7 @@ public class FotmobBrowserClient : IAsyncDisposable
         finally { _semaphore.Release(); }
     }
 
-    public async Task<PlayerRaw?> GetPlayerDetailAsync(int playerId)
+    public async Task<PlayerRaw?> GetPlayerDetailAsync(long playerId)
     {
         await InitializeAsync();
 
@@ -84,7 +84,7 @@ public class FotmobBrowserClient : IAsyncDisposable
                 var playerRaw = JsonSerializer.Deserialize<PlayerRaw>(playerJson.Value.GetRawText(),
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-                _logger.LogInformation("✅ Successfully extracted player {PlayerId} from __NEXT_DATA__", playerId);
+                _logger.LogInformation("Successfully extracted player {PlayerId} from __NEXT_DATA__", playerId);
                 return playerRaw;
             }
 
@@ -98,7 +98,7 @@ public class FotmobBrowserClient : IAsyncDisposable
         }
     }
 
-    private JsonElement? ExtractPlayerFromNextData(JsonElement nextData, int playerId)
+    private JsonElement? ExtractPlayerFromNextData(JsonElement nextData, long playerId)
     {
         try
         {
@@ -108,7 +108,8 @@ public class FotmobBrowserClient : IAsyncDisposable
             {
                 if (pageProps.TryGetProperty("data", out var data) &&
                     data.TryGetProperty("id", out var id) &&
-                    id.GetInt32() == playerId)
+                    id.TryGetInt64(out var idValue) &&
+                    idValue == playerId)
                 {
                     return data;
                 }

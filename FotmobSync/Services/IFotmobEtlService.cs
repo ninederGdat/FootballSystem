@@ -25,14 +25,15 @@ public interface IMatchSyncService
 
 public interface ISquadSyncService
 {
-    Task SyncAsync(TeamDataSnapshot snapshot);
+    Task SyncAsync(TeamDataSnapshot snapshot, CancellationToken cancellationToken);
 }
 
 public interface IPlayerSyncService
 {
     Task SyncAsync(
-        int playerId,
-        long teamId);
+        long playerId,
+        long teamId,
+        CancellationToken cancellationToken = default);
 }
 
 public interface ILineupSyncService

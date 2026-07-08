@@ -1,4 +1,4 @@
-using FotmobSync.Infrastructure;
+using FootballSystem.Shared.Infrastructure;
 using FotmobSync.Infrastructure.External.Fotmob.Mapping;
 using FotmobSync.Infrastructure.Resolvers.PlayingTime;
 using FotmobSync.Infrastructure.Resolvers.PositionRole;
@@ -31,10 +31,6 @@ public class LineupPlayerSyncService : ILineupPlayerSyncService
         _logger = logger;
     }
 
-
-    // ------------------------------------------------------------
-    // Public API
-    // ------------------------------------------------------------
 
     public async Task SyncAsync(
         MatchDetailSnapshot snapshot,

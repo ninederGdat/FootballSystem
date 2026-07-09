@@ -1,3 +1,7 @@
+using FootballApi.Repositories.Match;
+using FootballApi.Services;
+using FootballSystem.Shared.Infrastructure;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -8,6 +12,11 @@ builder.Services.AddSwaggerGen();
 
 // Đăng ký Supabase client
 builder.Services.AddSingleton<SupabaseClientFactory>();
+
+builder.Services.AddScoped<IMatchRepository, MatchRepository>();
+builder.Services.AddScoped<IMatchService, MatchService>();
+
+
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 

@@ -93,14 +93,6 @@ public class LineupSyncService : ILineupSyncService
             .Where(x => x.MatchId == snapshot.MatchId)
             .Single();
 
-        _logger.LogInformation(
-            """
-                SAVED LINEUP
-                Id={Id}
-                MatchId={MatchId}
-                """,
-            savedLineup.Id,
-            savedLineup.MatchId);
 
         return savedLineup;
     }

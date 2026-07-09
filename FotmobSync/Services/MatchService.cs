@@ -7,6 +7,7 @@ using FotmobSync.Models.Raw;
 using FotmobSync.Modules;
 using FotmobSync.Workflows;
 using Microsoft.Extensions.Logging;
+using FootballSystem.Shared.Models.Clean;
 using Supabase.Postgrest;
 
 namespace FotmobSync.Services;

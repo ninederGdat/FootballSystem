@@ -1,4 +1,5 @@
 // Common/Middleware/ExceptionHandlingMiddleware.cs
+using FootballApi.Common.Exceptions;
 using Microsoft.AspNetCore.Mvc;
 
 public class ExceptionHandlingMiddleware

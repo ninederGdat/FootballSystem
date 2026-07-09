@@ -1,6 +1,7 @@
 using FootballSystem.Shared.Infrastructure;
 using FotmobSync.Models.Clean;
 using FotmobSync.Workflows;
+using FootballSystem.Shared.Models.Clean;
 
 namespace FotmobSync.Services;
 

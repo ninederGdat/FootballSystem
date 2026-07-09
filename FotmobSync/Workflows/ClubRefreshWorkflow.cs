@@ -46,7 +46,7 @@ public class ClubRefreshWorkflow
 
             _logger.LogInformation("STEP 3");
 
-            await _squadSyncService.SyncAsync(snapshot);
+            await _squadSyncService.SyncAsync(snapshot, default);
 
             _logger.LogInformation("STEP 4");
 

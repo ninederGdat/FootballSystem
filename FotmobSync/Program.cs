@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Quartz;
 using FotmobSync.Infrastructure.Resolvers.PositionRole;
 using FotmobSync.Infrastructure.Resolvers.PlayingTime;
+using FootballSystem.Shared.Infrastructure;
 
 var builder = Host.CreateApplicationBuilder(args);
 

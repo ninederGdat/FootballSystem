@@ -1,7 +1,7 @@
 using Supabase.Postgrest.Attributes;
 using Supabase.Postgrest.Models;
 
-namespace FotmobSync.Models.Clean;
+namespace FootballSystem.Shared.Models.Clean;
 
 /// <summary>
 /// Clean model cho <c>public.matches</c> (một hàng theo góc nhìn đội <see cref="TeamId"/>).

@@ -1,4 +1,5 @@
-﻿using FotmobSync.Models.Clean;
+﻿using FootballSystem.Shared.Models.Clean;
+using FotmobSync.Models.Clean;
 using FotmobSync.Modules;
 
 namespace FotmobSync.Services;

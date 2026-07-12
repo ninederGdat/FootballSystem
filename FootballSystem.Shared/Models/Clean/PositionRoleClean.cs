@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace FotmobSync.Models.Clean
+namespace FootballSystem.Shared.Models.Clean
 {
     [Table("position_roles")]
     public class PositionRoleClean : BaseModel

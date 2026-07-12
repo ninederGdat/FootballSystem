@@ -1,7 +1,7 @@
 using Supabase.Postgrest.Attributes;
 using Supabase.Postgrest.Models;
 
-namespace FotmobSync.Models.Clean;
+namespace FootballSystem.Shared.Models.Clean;
 
 [Table("formations")]
 public class FormationClean : BaseModel

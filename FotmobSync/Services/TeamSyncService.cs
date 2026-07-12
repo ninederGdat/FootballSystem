@@ -6,6 +6,7 @@ using FotmobSync.Services;
 using Microsoft.Extensions.Logging;
 using Supabase.Postgrest;
 using FotmobSync.Mappers;
+using FootballSystem.Shared.Models.Clean;
 public class TeamSyncService : ITeamSyncService
 {
     private readonly Supabase.Client _supabase;

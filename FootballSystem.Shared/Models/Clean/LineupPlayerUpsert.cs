@@ -1,6 +1,8 @@
 using Supabase.Postgrest.Attributes;
 using Supabase.Postgrest.Models;
 
+namespace FootballSystem.Shared.Models.Clean;
+
 [Table("lineup_players")]
 public class LineupPlayerUpsert : BaseModel
 {

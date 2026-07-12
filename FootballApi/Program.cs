@@ -15,7 +15,8 @@ builder.Services.AddSingleton<SupabaseClientFactory>();
 
 builder.Services.AddScoped<IMatchRepository, MatchRepository>();
 builder.Services.AddScoped<IMatchService, MatchService>();
-
+builder.Services.AddScoped<ILineupRepository, LineupRepository>();
+builder.Services.AddScoped<ILineupService, LineupService>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();

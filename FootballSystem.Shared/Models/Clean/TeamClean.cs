@@ -2,7 +2,7 @@
 using Supabase.Postgrest.Attributes;
 using Supabase.Postgrest.Models;
 
-namespace FotmobSync.Models.Clean
+namespace FootballSystem.Shared.Models.Clean
 {
     /// <summary>
     /// Clean model 

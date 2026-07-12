@@ -4,6 +4,7 @@ using FotmobSync.Mappers;
 using FotmobSync.Models.Clean;
 using Supabase.Postgrest;
 using FootballSystem.Shared.Infrastructure;
+using FootballSystem.Shared.Models.Clean;
 public class PlayerSyncService
     : IPlayerSyncService
 {

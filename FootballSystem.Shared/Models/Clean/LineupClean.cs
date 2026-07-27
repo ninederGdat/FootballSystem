@@ -52,7 +52,7 @@ public class LineupPlayerClean : BaseModel
     public string? PositionCode { get; set; }
 
     [Column("role_id")]
-    public long? RoleId { get; set; }
+    public int? RoleId { get; set; }
 
     [Column("shirt_number")]
     public int? ShirtNumber { get; set; }

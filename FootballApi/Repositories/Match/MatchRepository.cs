@@ -16,12 +16,12 @@ public class MatchRepository : IMatchRepository
         _logger = logger;
     }
 
-    public async Task<MatchClean?> GetByMatchIdAsync(long matchId)
+    public async Task<MatchClean?> GetByMatchIdAsync(long matchId, CancellationToken ct = default)
     {
         var response = await _client
             .From<MatchClean>()
             .Filter("match_id", Constants.Operator.Equals, matchId)
-            .Get();
+            .Get(ct);
 
         var models = response.Models ?? [];
 
@@ -34,4 +34,19 @@ public class MatchRepository : IMatchRepository
 
         return models.FirstOrDefault();
     }
+
+    public async Task<List<MatchClean>> GetByMatchIdsAsync(IEnumerable<long> matchIds, CancellationToken ct = default)
+    {
+        var ids = matchIds.Distinct().ToList();
+        if (ids.Count == 0) return [];
+
+        var response = await _client
+            .From<MatchClean>()
+            .Filter("match_id", Constants.Operator.In, ids)
+            .Get(ct);
+
+        return response.Models ?? [];
+    }
+
+    
 }

@@ -283,6 +283,8 @@ Documentation for raw JSON structures extracted from Fotmob used in the **Footba
         },
         "marketValue": 19688528,
         "performance": {
+          "events": 
+            0: {type: "goal"},
           "rating": 5.8,
           "substitutionEvents": [
             {

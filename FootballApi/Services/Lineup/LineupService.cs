@@ -50,36 +50,40 @@ public class LineupService : ILineupService
         var roleMap = rolesTask.Result.ToDictionary(r => r.Id, r => r);
 
         // Local Function: chuyển LineupPlayerClean -> LineupPlayerResponse
-        List<LineupPlayerResponse> Map(IEnumerable<LineupPlayerClean> players)
+        LineupPlayerResponse MapSingle(LineupPlayerClean p)
         {
-            return players.Select(p =>
-            {
-                positionMap.TryGetValue(p.PositionCode ?? "", out var position);
-                PositionRoleClean? role = null;
-                if (p.RoleId.HasValue)
-                    roleMap.TryGetValue((int)p.RoleId.Value, out role);
+            positionMap.TryGetValue(p.PositionCode ?? "", out var position);
+            PositionRoleClean? role = null;
+            if (p.RoleId.HasValue)
+                roleMap.TryGetValue((int)p.RoleId.Value, out role);
 
-                return new LineupPlayerResponse
-                {
-                    PlayerId = p.PlayerId,
-                    PlayerName = playerNameMap.GetValueOrDefault(p.PlayerId, "Unknown"),
-                    PositionCode = p.PositionCode,
-                    PositionName = position?.PositionName,
-                    RoleId = p.RoleId,
-                    RoleName = role?.RoleName,
-                    RoleShort = role?.RoleShort,
-                    ShirtNumber = p.ShirtNumber,
-                    MinuteIn = p.MinuteIn,
-                    MinuteOut = p.MinuteOut,
-                    CustomX = p.CustomX,
-                    CustomY = p.CustomY
-                };
-            })
-            // Sort theo x_coord trước (GK ~0, tăng dần theo tuyến), rồi y_coord (trái -> phải trên cùng tuyến)
+            return new LineupPlayerResponse
+            {
+                PlayerId = p.PlayerId,
+                PlayerName = playerNameMap.GetValueOrDefault(p.PlayerId, "Unknown"),
+                PositionCode = p.PositionCode,
+                PositionName = position?.PositionName,
+                RoleId = p.RoleId,
+                RoleName = role?.RoleName,
+                RoleShort = role?.RoleShort,
+                ShirtNumber = p.ShirtNumber,
+                MinuteIn = p.MinuteIn,
+                MinuteOut = p.MinuteOut,
+                CustomX = p.CustomX,
+                CustomY = p.CustomY
+            };
+        }
+
+        var starters = lineupPlayers.Where(p => p.IsStarter)
+            .Select(MapSingle)
             .OrderBy(r => r.CustomX ?? 0.5)
             .ThenBy(r => r.CustomY ?? 0.5)
             .ToList();
-        }
+
+        var substitutes = lineupPlayers.Where(p => !p.IsStarter)
+            .Select(MapSingle)
+            .OrderBy(r => r.ShirtNumber ?? int.MaxValue)
+            .ToList();
 
         return new LineupResponse
         {
@@ -88,8 +92,9 @@ public class LineupService : ILineupService
             Formation = formationTask.Result is { } f
                 ? new FormationDto { Id = f.Id, Name = f.Name, Description = f.Description }
                 : null,
-            Starters = Map(lineupPlayers.Where(p => p.IsStarter)),
-            Substitutes = Map(lineupPlayers.Where(p => !p.IsStarter))
+            Starters = starters,
+            Substitutes = substitutes
+
         };
     }
 }

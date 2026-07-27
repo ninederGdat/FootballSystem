@@ -21,11 +21,11 @@ The schema is divided into three primary logical groups:
 These tables store foundational reference data shared across the entire system.
 
 | Table | Fields | Description |
-|---|---|---|
+|-------|--------|-------------|
 | `competitions` | `competition_id` (PK), `name`, `code`, `last_updated` | Stores tournament metadata such as Premier League or V-League. |
-| `positions` | `position_code` (PK), `position_name`, `x_coord`, `y_coord`, `is_goalkeeper` | Defines tactical pitch positions with visual coordinates. |
-| `position_roles` | `id` (PK), `position_code` (FK), `role_name`, `role_short`, `is_premium` | Defines specialized tactical roles linked to positions. |
-| `formations` | `id` (PK), `name`, `description`, `is_popular` | Stores tactical formations such as `4-3-3` or `3-5-2`. |
+| `positions` | `position_code` (PK), `position_name`, `x_coord`, `y_coord`, `is_goalkeeper` | Defines tactical pitch positions with visual coordinates used for formation visualization. |
+| `position_roles` | `id` (PK), `position_code` (FK), `role_name`, `role_short`, `is_premium`, `is_default` | Defines specialized tactical roles associated with each position. One role can be marked as the default role for mapping. |
+| `formations` | `id` (PK), `name`, `description`, `is_popular` | Stores tactical formations such as `4-3-3`, `4-2-3-1`, or `3-5-2`. |
 
 ---
 
@@ -49,12 +49,13 @@ coach_nationality
 
 ### Description
 
-The central entity for football club management.
+Represents a football club within the system.
 
 Stores:
-- Club metadata
-- Visual identity
-- Coaching information
+
+- Club information
+- Logo
+- Coaching staff metadata
 
 ---
 
@@ -73,6 +74,7 @@ contract_until
 market_value
 status
 preferred_position_code (FK)
+injury_description
 created_at
 last_updated
 ```
@@ -86,18 +88,22 @@ last_updated
 
 ### AI-Critical Fields
 
-The following fields are mandatory for future AI systems:
+The following fields are important for future football intelligence features:
 
 ```text
 market_value
 status
+preferred_position_code
+injury_description
 ```
 
 These support:
-- Scouting systems
-- Performance analysis
-- Recommendation engines
-- Tactical intelligence
+
+- Player scouting
+- Tactical recommendation
+- Injury tracking
+- Squad availability analysis
+- AI-based player similarity
 
 ---
 
@@ -117,6 +123,7 @@ team_id (FK)
 opponent_team_id
 opponent_name
 competition_id (FK)
+competition_name
 match_date
 home_or_away
 score_home
@@ -128,17 +135,19 @@ last_updated
 ### Relationships
 
 Linked to:
+
 - `teams`
 - `competitions`
 
 ### Responsibilities
 
 Stores:
+
 - Match schedules
-- Match history
-- Scores
+- Historical results
 - Opponent information
-- Match states
+- Competition metadata
+- Match status
 
 ---
 
@@ -148,7 +157,7 @@ Stores:
 
 ```text
 id (PK)
-match_id (FK)
+match_id (FK, UNIQUE)
 formation_id (FK)
 type
 created_at
@@ -157,16 +166,20 @@ updated_at
 
 ### Description
 
-Represents a tactical lineup used during a specific match.
+Represents the official tactical lineup used for a specific match.
+
+Each match owns exactly one lineup record.
 
 Links:
-- Matches
-- Tactical formations
 
-Examples:
-- Starting XI
-- Final lineup
-- Tactical variation
+- Match
+- Formation
+
+Stores:
+
+- Formation used
+- Lineup type
+- Metadata timestamps
 
 ---
 
@@ -190,41 +203,39 @@ custom_y
 
 ### Description
 
-The most granular tactical table in the entire system.
+The most granular tactical entity in the database.
+
+Represents one player's participation within a lineup.
 
 Maps:
-- Players
-- Tactical positions
-- Tactical roles
-- Match participation
 
-inside a specific lineup.
+- Player
+- Tactical position
+- Tactical role
+- Playing time
+- Pitch coordinates
 
 ### Tactical Responsibilities
 
 Tracks:
-- Starter/substitute status
+
+- Starter/Substitute status
+- Minute entered
+- Minute substituted off
 - Tactical role assignment
-- Dynamic positioning
-- Match minute participation
-- Tactical coordinate overrides
+- Position mapping
+- Custom tactical coordinates
 
 ---
 
-# 4. Key Relationships & Integrity Rules
-
-The schema heavily utilizes PostgreSQL relational constraints and automation features.
-
----
-
-# One-to-Many Relationships (1:N)
+# 4. Entity Relationships
 
 ## Team → Players
 
 ```text
 One Team
-    →
-Many Players
+    │
+    └──────────► Many Players
 ```
 
 ---
@@ -233,24 +244,31 @@ Many Players
 
 ```text
 One Competition
-    →
-Many Matches
+    │
+    └──────────► Many Matches
 ```
 
 ---
 
-## Match → Lineups
+## Match → Lineup
 
 ```text
 One Match
-    →
-Multiple Lineups
+    │
+    └──────────► One Lineup
 ```
 
-Examples:
-- Starting lineup
-- In-game tactical variation
-- Final formation
+Each match owns exactly one tactical lineup.
+
+---
+
+## Lineup → LineupPlayers
+
+```text
+One Lineup
+    │
+    └──────────► Many Lineup Players
+```
 
 ---
 
@@ -258,67 +276,65 @@ Examples:
 
 ```text
 One Position
-    →
-Many Tactical Roles
+    │
+    └──────────► Many Tactical Roles
 ```
 
 Example:
 
 ```text
-Midfielder
-    →
-Box-to-Box
-    →
-Deep-Lying Playmaker
-    →
-Mezzala
+CM
+
+├── Box-to-Box
+├── Deep Lying Playmaker
+├── Carrilero
+└── Mezzala
 ```
 
 ---
 
-# Referential Integrity Rules
+# 5. Referential Integrity
+
+The database uses PostgreSQL foreign keys to maintain consistency.
 
 ## ON DELETE CASCADE
 
 Deleting a:
+
 - Team
 - Player
 
 automatically removes dependent records from:
 
-- `matches`
-- `players`
-- `lineup_players`
+- Players
+- Matches
+- LineupPlayers
 
-This prevents orphaned tactical data.
+preventing orphaned tactical data.
 
 ---
 
 ## ON DELETE RESTRICT
 
 Deleting a:
+
 - Position
 
-is blocked if it is currently referenced by:
+is prevented if it is referenced by:
+
 - Players
-- Position roles
-- Tactical lineups
+- PositionRoles
+- LineupPlayers
 
-This preserves tactical consistency.
-
----
-
-# Database Automation
-
-The database uses:
-- PL/pgSQL functions
-- PostgreSQL triggers
-
-to automatically maintain timestamps.
+ensuring tactical consistency.
 
 ---
 
-## Automated Timestamp Handling
+# 6. Database Automation
+
+The database uses PostgreSQL automation features.
+
+## Timestamp Automation
 
 The following fields are automatically maintained:
 
@@ -327,107 +343,108 @@ last_updated
 updated_at
 ```
 
-Example trigger responsibilities:
+Typical trigger examples:
 
 ```sql
 update_players_last_updated
 update_lineups_updated_at
 ```
 
-C# services must never manually update these values.
+Application services should not manually update these timestamps.
 
 ---
 
-# 5. Tactical Data Design Philosophy
+# 7. Tactical Design Philosophy
 
-The database structure is intentionally designed around:
-
-- Tactical flexibility
-- Match reconstruction
-- Formation visualization
-- AI-driven analysis
-- Football intelligence systems
+The schema is designed around tactical football modeling rather than simple sports statistics.
 
 The combination of:
 
-- `positions`
-- `position_roles`
-- `lineup_players`
+- Positions
+- PositionRoles
+- Formations
+- Lineups
+- LineupPlayers
 
-creates a highly granular tactical model capable of representing:
-- Real formations
-- Dynamic player movement
-- Role-based football analysis
+enables:
+
+- Formation visualization
+- Tactical reconstruction
+- Role-based analysis
+- Match replay
+- Player positioning
+- AI tactical reasoning
 
 ---
 
-# 6. AI-Ready Extensions
+# 8. AI-Ready Extensions
 
-The schema is prepared for future AI integrations and football intelligence tooling.
+The current schema is designed to support future AI modules.
 
----
-
-## Vector Search Support
-
-A future column is proposed for the `players` table:
+Potential future additions include:
 
 ```sql
 performance_vector VECTOR
 ```
 
-### Purpose
+for storing:
 
-Stores:
 - Performance embeddings
 - Tactical embeddings
 - Player similarity vectors
 
-for:
+Potential use cases:
+
 - AI scouting
-- Semantic search
-- Recommendation systems
+- Semantic player search
+- Similar player recommendation
+- Tactical clustering
 
 ---
 
-## RAG (Retrieval-Augmented Generation)
+# 9. Architectural Summary
 
-The tactical granularity of:
-
-- `lineup_players`
-- `position_roles`
-
-enables advanced AI query systems.
-
-### Example AI Queries
-
-```text
-Which Box-to-Box midfielders perform best in a 4-3-3?
-
-Which tactical roles produce the highest pressing efficiency?
-
-Which players perform similarly to a Trequartista in transition systems?
-```
-
----
-
-# 7. Architectural Summary
-
-The FootballSystem database is designed around:
+The FootballSystem database emphasizes:
 
 - Strong relational integrity
 - Tactical football modeling
 - Automated ETL synchronization
 - PostgreSQL automation
+- Scalable architecture
 - AI extensibility
-- Scalable football intelligence workflows
+
+Current data flow:
+
+```text
+Fotmob API
+      │
+      ▼
+Extract
+      │
+      ▼
+Mapper
+      │
+      ▼
+Clean Models
+      │
+      ▼
+Supabase PostgreSQL
+      │
+      ▼
+Football API
+      │
+      ▼
+Frontend / AI Services
+```
 
 The schema prioritizes:
 
 ```text
 Consistency
-→ Tactical Accuracy
-→ Automation
-→ AI Readiness
+      ↓
+Tactical Accuracy
+      ↓
+Automation
+      ↓
+AI Readiness
 ```
-
-instead of simplistic sports data storage.

@@ -1,12 +1,24 @@
 using FootballApi.Common.Exceptions;
 using FootballApi.DTOs.Responses;
+using FootballApi.Repositories.Position;
+using FootballApi.Repositories.PositionRole;
 using FootballSystem.Shared.Models.Clean;
 
 public class LineupService : ILineupService
 {
     private readonly ILineupRepository _repo;
+    private readonly IPositionRepository _positionRepository;
+    private readonly IPositionRoleRepository _positionRoleRepository;
 
-    public LineupService(ILineupRepository repo) => _repo = repo;
+    public LineupService(
+        ILineupRepository repo,
+        IPositionRepository positionRepository,
+        IPositionRoleRepository positionRoleRepository)
+    {
+        _repo = repo;
+        _positionRepository = positionRepository;
+        _positionRoleRepository = positionRoleRepository;
+    }
 
     public async Task<LineupResponse> GetLineupByMatchIdAsync(long matchId)
     {
@@ -38,8 +50,8 @@ public class LineupService : ILineupService
 
         // Khởi tạo các query độc lập để chạy song song
         var playersTask = _repo.GetPlayersByIdsAsync(playerIds);
-        var positionsTask = _repo.GetPositionsByCodesAsync(positionCodes);
-        var rolesTask = _repo.GetPositionRolesByIdsAsync(roleIds);
+        var positionsTask = _positionRepository.GetByCodesAsync(positionCodes);
+        var rolesTask = _positionRoleRepository.GetByIdsAsync(roleIds);
 
         // Đợi toàn bộ query hoàn thành
         await Task.WhenAll(formationTask, playersTask, positionsTask, rolesTask);

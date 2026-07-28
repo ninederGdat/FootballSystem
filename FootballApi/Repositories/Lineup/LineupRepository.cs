@@ -46,22 +46,6 @@ public class LineupRepository : ILineupRepository
         return result.Models;
     }
 
-    public async Task<List<PositionClean>> GetPositionsByCodesAsync(List<string> positionCodes, CancellationToken ct = default)
-    {
-        var result = await _client.From<PositionClean>()
-            .Filter("position_code", Supabase.Postgrest.Constants.Operator.In, positionCodes)
-            .Get(ct);
-        return result.Models;
-    }
-
-    public async Task<List<PositionRoleClean>> GetPositionRolesByIdsAsync(List<int> roleIds, CancellationToken ct = default)
-    {
-        var result = await _client.From<PositionRoleClean>()
-            .Filter("id", Supabase.Postgrest.Constants.Operator.In, roleIds)
-            .Get(ct);
-        return result.Models;
-    }
-
     public async Task<(List<LineupPlayerClean> Items, int TotalCount)> GetLineupPlayersByPlayerIdAsync(
         long playerId, int page, int pageSize, CancellationToken ct = default)
     {

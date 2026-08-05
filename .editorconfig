@@ -5,5 +5,9 @@ root = true
 indent_style = space
 
 # Xml files
+
+# CA1848: Use the LoggerMessage delegates
+dotnet_diagnostic.CA1848.severity = none
+
 [*.xml]
 indent_size = 2

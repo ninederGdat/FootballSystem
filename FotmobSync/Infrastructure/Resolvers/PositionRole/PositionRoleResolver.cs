@@ -1,5 +1,5 @@
-using FotmobSync.Models.Clean;
 using FootballSystem.Shared.Infrastructure;
+using FootballSystem.Shared.Models.Clean;
 
 namespace FotmobSync.Infrastructure.Resolvers.PositionRole;
 

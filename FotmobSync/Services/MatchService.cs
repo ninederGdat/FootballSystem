@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Text.Json;
 using FootballSystem.Shared.Infrastructure;
 using FotmobSync.Mappers;
-using FotmobSync.Models.Clean;
 using FotmobSync.Models.Raw;
 using FotmobSync.Modules;
 using FotmobSync.Workflows;

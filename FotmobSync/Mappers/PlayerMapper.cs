@@ -1,5 +1,4 @@
-﻿using FotmobSync.Models.Clean;
-using FotmobSync.Models.Raw;
+﻿using FotmobSync.Models.Raw;
 using FotmobSync.Mappers;
 using System;
 using System.Collections.Generic;

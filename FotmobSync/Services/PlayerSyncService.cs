@@ -1,7 +1,6 @@
 using FotmobSync.Infrastructure.External;
 using FotmobSync.Services;
 using FotmobSync.Mappers;
-using FotmobSync.Models.Clean;
 using Supabase.Postgrest;
 using FootballSystem.Shared.Infrastructure;
 using FootballSystem.Shared.Models.Clean;

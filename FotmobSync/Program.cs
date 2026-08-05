@@ -12,6 +12,7 @@ using Quartz;
 using FotmobSync.Infrastructure.Resolvers.PositionRole;
 using FotmobSync.Infrastructure.Resolvers.PlayingTime;
 using FootballSystem.Shared.Infrastructure;
+using FotmobSync.Mappers;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -29,7 +30,7 @@ builder.Services.AddSingleton<SupabaseClientFactory>();
 builder.Services.AddSingleton<FotmobTeamDataModule>();
 builder.Services.AddSingleton<FotmobMatchDetailModule>();
 
-builder.Services.AddScoped<IFotmobEtlService, FotmobEtlService>();
+// builder.Services.AddScoped<IFotmobEtlService, FotmobEtlService>();
 
 // Sync Services
 builder.Services.AddScoped<ITeamSyncService, TeamSyncService>();
@@ -39,6 +40,7 @@ builder.Services.AddScoped<IPlayerSyncService, PlayerSyncService>();
 builder.Services.AddScoped<ILineupSyncService, LineupSyncService>();
 builder.Services.AddScoped<ILineupPlayerSyncService, LineupPlayerSyncService>();
 builder.Services.AddScoped<ILineupBackfillService, LineupBackfillService>();
+builder.Services.AddScoped<IMatchEventSyncService, MatchEventSyncService>();
 
 // Lookup Services
 builder.Services.AddSingleton<FormationService>();

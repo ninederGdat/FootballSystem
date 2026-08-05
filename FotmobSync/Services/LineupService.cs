@@ -4,7 +4,6 @@ using FootballSystem.Shared.Models.Clean;
 using FotmobSync.Clients;
 using FotmobSync.Infrastructure;
 using FotmobSync.Mappers;
-using FotmobSync.Models.Clean;
 using FotmobSync.Models.Raw;
 using FotmobSync.Modules;
 using FotmobSync.Services;

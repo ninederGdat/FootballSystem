@@ -1,5 +1,4 @@
 ﻿using FootballSystem.Shared.Models.Clean;
-using FotmobSync.Models.Clean;
 using FotmobSync.Models.Raw;
 
 namespace FotmobSync.Mappers;

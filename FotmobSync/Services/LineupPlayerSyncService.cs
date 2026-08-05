@@ -1,8 +1,8 @@
 using FootballSystem.Shared.Infrastructure;
+using FootballSystem.Shared.Models.Clean;
 using FotmobSync.Infrastructure.External.Fotmob.Mapping;
 using FotmobSync.Infrastructure.Resolvers.PlayingTime;
 using FotmobSync.Infrastructure.Resolvers.PositionRole;
-using FotmobSync.Models.Clean;
 using FotmobSync.Models.Raw;
 using FotmobSync.Modules;
 using FotmobSync.Services;

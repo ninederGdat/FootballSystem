@@ -20,12 +20,27 @@ public class LineupService : ILineupService
         _positionRoleRepository = positionRoleRepository;
     }
 
+
     public async Task<LineupResponse> GetLineupByMatchIdAsync(long matchId)
     {
-        // Guard clause: dừng ngay nếu trận đấu chưa có lineup
         var lineup = await _repo.GetLineupByMatchIdAsync(matchId)
             ?? throw new NotFoundException($"Lineup not found for match {matchId}");
 
+        return await BuildLineupResponseAsync(lineup);
+    }
+
+    public async Task<LineupResponse?> GetLineupByMatchIdOrDefaultAsync(long matchId)
+    {
+        var lineup = await _repo.GetLineupByMatchIdAsync(matchId);
+        if (lineup == null)
+            return null;
+
+        return await BuildLineupResponseAsync(lineup);
+    }
+
+
+    private async Task<LineupResponse> BuildLineupResponseAsync(LineupClean lineup)
+    {
         // Khởi tạo Task để có thể await đồng thời với các query khác.
         // Nếu không có Formation thì dùng Completed Task thay vì phải if ở dưới.
         var formationTask = lineup.FormationId.HasValue

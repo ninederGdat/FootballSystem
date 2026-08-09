@@ -16,7 +16,7 @@ public class PlayersController : ControllerBase
     }
 
     /// <summary>Lấy hồ sơ chi tiết một cầu thủ</summary>
-    [HttpGet("{playerId:int}")]
+    [HttpGet("{playerId:long}")]
     [ProducesResponseType(typeof(PlayerProfileDTO), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PlayerProfileDTO>> GetPlayer(int playerId, CancellationToken ct)
@@ -26,7 +26,7 @@ public class PlayersController : ControllerBase
     }
 
     /// <summary>Lấy lịch sử ra sân của một cầu thủ (phân trang)</summary>
-    [HttpGet("{playerId:int}/appearances")]
+    [HttpGet("{playerId:long}/appearances")]
     [ProducesResponseType(typeof(PlayerAppearancesResult), StatusCodes.Status200OK)]
     public async Task<ActionResult<PlayerAppearancesResult>> GetPlayerAppearances(
         int playerId,

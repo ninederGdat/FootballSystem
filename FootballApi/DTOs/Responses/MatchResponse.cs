@@ -1,3 +1,4 @@
+using FootballApi.DTOs.Responses;
 using FootballSystem.Shared.Models.Clean;
 
 namespace FootballApi.DTOs.Responses;
@@ -13,9 +14,14 @@ public record MatchResponse(
     string? HomeOrAway,
     int? ScoreHome,
     int? ScoreAway,
-    string Status)
+    string Status,
+    List<MatchEventItemResponse> Events,
+    LineupResponse? Lineup)
 {
-    public static MatchResponse FromClean(MatchClean clean) => new(
+    public static MatchResponse FromClean(
+        MatchClean clean,
+        List<MatchEventItemResponse> events,
+        LineupResponse? lineup) => new(
         clean.MatchId,
         clean.TeamId,
         clean.OpponentTeamId,
@@ -26,5 +32,7 @@ public record MatchResponse(
         clean.HomeOrAway,
         clean.ScoreHome,
         clean.ScoreAway,
-        clean.Status);
+        clean.Status,
+        events,
+        lineup);
 }

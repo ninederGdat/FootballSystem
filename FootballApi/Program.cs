@@ -17,6 +17,25 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+
+// --- Frontend CORS policy -------------------------------------------------
+// Vite dev server default is http://localhost:5173. Add any other origins
+// (e.g. a deployed frontend URL) to this list as needed.
+const string FrontendCorsPolicy = "FrontendCorsPolicy";
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(FrontendCorsPolicy, policy =>
+    {
+        policy
+            .WithOrigins(
+                "http://localhost:5173",
+                "http://127.0.0.1:5173")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+// ---------------------------------------------------------------------------
+
 // Đăng ký Supabase client
 builder.Services.AddSingleton<SupabaseClientFactory>();
 
@@ -50,6 +69,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Must run before UseAuthorization, and before MapControllers.
+app.UseCors(FrontendCorsPolicy);
 
 app.UseAuthorization();
 

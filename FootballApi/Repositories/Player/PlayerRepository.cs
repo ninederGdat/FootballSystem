@@ -28,38 +28,47 @@ public class PlayerRepository : IPlayerRepository
         return result.Models;
     }
 
-    public async Task<(List<PlayerClean> Items, int TotalCount)> SearchAsync(
-        string? search, long? teamId, string? positionCode, string? nationality,
-        int page, int pageSize, CancellationToken ct)
-    {
-        // Postgrest query builder — filter động, chỉ áp field nào có giá trị.
-        var query = _client.From<PlayerClean>();
+public async Task<(List<PlayerClean> Items, int TotalCount)> SearchAsync(
+    string? search,
+    long? teamId,
+    string? positionCode,
+    string? nationality,
+    int page,
+    int pageSize,
+    CancellationToken ct)
+{
+    var query = _client.From<PlayerClean>();
 
-        // Use .Filter returns IPostgrestTable, not ISupabaseTable, so avoid reassignment
-        if (teamId is not null)
-            query.Filter("team_id", Supabase.Postgrest.Constants.Operator.Equals, teamId.Value);
+    if (teamId is not null)
+        query.Filter(
+            "team_id",
+            Supabase.Postgrest.Constants.Operator.Equals,
+            teamId.Value);
 
-        if (!string.IsNullOrWhiteSpace(positionCode))
-            query.Filter("preferred_position_code", Supabase.Postgrest.Constants.Operator.Equals, positionCode);
+    if (!string.IsNullOrWhiteSpace(positionCode))
+        query.Filter(
+            "preferred_position_code",
+            Supabase.Postgrest.Constants.Operator.Equals,
+            positionCode);
 
-        if (!string.IsNullOrWhiteSpace(nationality))
-            query.Filter("nationality", Supabase.Postgrest.Constants.Operator.Equals, nationality);
+    if (!string.IsNullOrWhiteSpace(nationality))
+        query.Filter(
+            "nationality",
+            Supabase.Postgrest.Constants.Operator.Equals,
+            nationality);
 
-        if (!string.IsNullOrWhiteSpace(search))
-            query.Filter("name", Supabase.Postgrest.Constants.Operator.ILike, $"%{search}%");
+    if (!string.IsNullOrWhiteSpace(search))
+        query.Filter(
+            "name",
+            Supabase.Postgrest.Constants.Operator.ILike,
+            $"%{search}%");
 
-        // NOTE: Postgrest .Count() cần 1 request riêng để lấy tổng số bản ghi (không tính từ page hiện tại).
-        // Nếu Supabase.Client bản bạn dùng hỗ trợ .Count(Supabase.Postgrest.Constants.CountType.Exact),
-        // gọi riêng trước khi .Range() để lấy TotalCount chính xác. Tạm thời mình để verify lại API version:
-        var countResult = await query.Count(Supabase.Postgrest.Constants.CountType.Exact);
+    var result = await query.Get();
 
-        var offset = (page - 1) * pageSize;
-        var pagedResult = await query
-            .Range(offset, offset + pageSize - 1)
-            .Get();
+    Console.WriteLine($"MODELS = {result.Models.Count}");
 
-        return (pagedResult.Models, countResult);
-    }
+    return (result.Models, result.Models.Count);
+}
 
 
     

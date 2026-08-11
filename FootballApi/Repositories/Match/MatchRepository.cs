@@ -48,5 +48,66 @@ public class MatchRepository : IMatchRepository
         return response.Models ?? [];
     }
 
-    
+    public async Task<(List<MatchClean> Items, int TotalCount)> SearchAsync(
+        DateTime? fromDate,
+        DateTime? toDate,
+        string? opponent,
+        string? status,
+        int page,
+        int pageSize,
+        CancellationToken ct = default)
+    {
+
+        var query = _client.From<MatchClean>();
+
+        if (fromDate is not null)
+        {
+            query.Filter(
+                "match_date",
+                Constants.Operator.GreaterThanOrEqual,
+                fromDate.Value.ToString("0")
+            );
+        }
+
+        if (toDate is not null)
+        {
+            query.Filter(
+                "match_date",
+                Constants.Operator.LessThanOrEqual,
+                toDate.Value.ToString("0")
+            );
+        }
+
+        if (!string.IsNullOrWhiteSpace(opponent))
+            query.Filter(
+                "opponent_name",
+                Constants.Operator.Like,
+                $"%{opponent}%"
+            );
+
+        if (!string.IsNullOrWhiteSpace(status))
+            query.Filter(
+                "status",
+                Constants.Operator.Equals,
+                status);
+
+        // Most recent/soonest matches first — matches the fan-facing "what's happening" use case.
+        query.Order("match_date", Constants.Ordering.Descending);
+
+        // Clamp to sane values so a bad/zero pageSize can't blow up Range() or return everything.
+        var safePage = page < 1 ? 1 : page;
+        var safePageSize = pageSize < 1 ? 20 : pageSize;
+
+        var offset = (safePage - 1) * safePageSize;
+        var limit = offset + safePageSize - 1;
+
+        query.Range(offset, limit);
+
+        // CountType.Exact makes Postgrest add `Prefer: count=exact`, which populates
+        // result.Count from the response's Content-Range header.
+        var result = await query.Get(ct, Constants.CountType.Exact);
+
+        return (result.Models, result.Count);
+    }
+
 }

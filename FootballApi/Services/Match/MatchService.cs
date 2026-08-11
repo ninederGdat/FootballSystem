@@ -1,7 +1,9 @@
 using FootballApi.Common.Exceptions;
+using FootballApi.DTOs.Matches;
 using FootballApi.DTOs.Responses;
 using FootballApi.Repositories.Match;
 using FootballApi.Services.MatchEvent;
+using FootballSystem.Shared.Models.Clean;
 
 namespace FootballApi.Services;
 
@@ -32,5 +34,37 @@ public class MatchService : IMatchService
         await Task.WhenAll(eventsTask, lineupTask);
 
         return MatchResponse.FromClean(match, eventsTask.Result, lineupTask.Result);
+    }
+
+    public async Task<(IReadOnlyList<MatchSummaryDTO> Items, int TotalCount)> SearchMatchesAsync(
+         MatchSearchQuery query, CancellationToken ct = default)
+    {
+        var (matches, totalCount) = await _repository.SearchAsync(
+            query.FromDate,
+            query.ToDate,
+            query.Opponent,
+            query.Status,
+            query.Page,
+            query.PageSize,
+            ct);
+
+        var items = matches.Select(MapToSummaryDto).ToList();
+
+        return (items, totalCount);
+    }
+
+    private static MatchSummaryDTO MapToSummaryDto(MatchClean match)
+    {
+        return new MatchSummaryDTO
+        {
+            MatchId = match.MatchId,
+            MatchDate = match.MatchDate,
+            OpponentName = match.OpponentName,
+            HomeOrAway = match.HomeOrAway,
+            CompetitionName = match.CompetitionName,
+            ScoreHome = match.ScoreHome,
+            ScoreAway = match.ScoreAway,
+            Status = match.Status
+        };
     }
 }

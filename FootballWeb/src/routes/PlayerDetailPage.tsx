@@ -22,86 +22,171 @@ export function PlayerDetailPage() {
   if (!profile.data) return null;
 
   const player = profile.data;
+  const isFit = player.status.status.toLowerCase() === "active";
+  const isInjured = player.status.status.toLowerCase() === "injured";
+  const statusDotClass = isFit
+    ? "bg-[#10B981]"
+    : isInjured
+      ? "bg-error"
+      : "bg-outline";
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-lg border border-surface-border bg-surface p-6">
-        <div className="flex items-start gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-brand-100 text-lg font-semibold text-brand-600">
-            {player.shirtNumber ?? "?"}
+    <div>
+      {/* Player Identity Block */}
+      <section className="mb-gutter bg-surface-container-high border border-outline-variant rounded p-6">
+        <div className="flex items-start justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-6">
+            <div className="w-16 h-16 rounded-full bg-primary-container flex items-center justify-center border border-primary shrink-0">
+              <span className="font-data-mono text-[24px] font-bold text-on-primary-container">
+                {player.shirtNumber ?? "—"}
+              </span>
+            </div>
+            <div>
+              <h2 className="font-display-lg text-display-lg text-on-surface mb-1">
+                {player.name}
+              </h2>
+              <div className="flex items-center gap-3 text-on-surface-variant font-body-sm text-body-sm flex-wrap">
+                {player.preferredPosition && (
+                  <span className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[16px]">
+                      sports_martial_arts
+                    </span>{" "}
+                    {player.preferredPosition.positionName}
+                  </span>
+                )}
+                {player.preferredPosition && player.nationality && (
+                  <span className="w-1 h-1 rounded-full bg-outline" />
+                )}
+                {player.nationality && <span>{player.nationality}</span>}
+                {player.currentTeam && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-outline" />
+                    <span>{player.currentTeam.teamName}</span>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-semibold text-ink">{player.name}</h1>
-            <p className="mt-1 text-sm text-ink-muted">
-              {[
-                player.currentTeam?.teamName,
-                player.preferredPosition?.positionName,
-                player.nationality,
-              ]
-                .filter(Boolean)
-                .join(" · ") || "—"}
-            </p>
+          <div className="flex gap-6 text-right">
+            <div>
+              <p className="font-label-caps text-label-caps text-on-surface-variant uppercase mb-1">
+                Market Value
+              </p>
+              <p className="font-data-mono text-[18px] text-on-surface font-bold">
+                {player.contract.marketValue != null
+                  ? `€${player.contract.marketValue.toLocaleString()}`
+                  : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="font-label-caps text-label-caps text-on-surface-variant uppercase mb-1">
+                Contract
+              </p>
+              <p className="font-data-mono text-[18px] text-on-surface font-bold">
+                {player.contract.contractUntil ?? "—"}
+              </p>
+            </div>
           </div>
         </div>
 
-        <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-          <Field label="Status" value={player.status.status} />
-          <Field
-            label="Contract until"
-            value={player.contract.contractUntil ?? "—"}
-          />
-          <Field
-            label="Market value"
-            value={
-              player.contract.marketValue != null
-                ? `€${player.contract.marketValue.toLocaleString()}`
-                : "—"
-            }
-          />
-          <Field
-            label="Date of birth"
-            value={player.dateOfBirth ?? "—"}
-          />
-        </dl>
-
         {player.status.injuryDescription && (
-          <p className="mt-3 rounded bg-warning/10 px-3 py-2 text-sm text-warning">
+          <p className="mt-4 rounded bg-error-container/20 border border-error-container px-3 py-2 font-body-sm text-body-sm text-error">
             {player.status.injuryDescription}
           </p>
         )}
-      </div>
-
-      <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-muted">
-          Appearance History
-        </h2>
-
-        {appearances.isLoading && <LoadingState label="Loading appearances..." />}
-        {appearances.error && <ErrorState error={appearances.error} />}
-
-        {appearances.data && (
-          <div className="space-y-3">
-            <AppearanceList appearances={appearances.data.appearances} />
-            <Pagination
-              page={appearances.data.page}
-              pageSize={appearances.data.pageSize}
-              totalCount={appearances.data.totalCount}
-              onPageChange={setPage}
-            />
-          </div>
-        )}
       </section>
+
+      <div className="grid grid-cols-12 gap-gutter">
+        {/* Overview */}
+        <div className="col-span-12 lg:col-span-3 flex flex-col gap-unit">
+          <h3 className="font-headline-sm text-headline-sm text-on-surface mb-2">
+            Overview
+          </h3>
+          <div className="bg-surface-container border border-outline-variant rounded p-4">
+            <OverviewRow
+              label="Position"
+              value={player.preferredPosition?.positionName ?? "—"}
+            />
+            <OverviewRow
+              label="Nationality"
+              value={player.nationality ?? "—"}
+            />
+            <OverviewRow label="DOB" value={player.dateOfBirth ?? "—"} mono />
+            <OverviewRow
+              label="Shirt #"
+              value={player.shirtNumber?.toString() ?? "—"}
+              mono
+            />
+            <div className="flex justify-between items-center py-2 last:border-0">
+              <span className="font-body-sm text-body-sm text-on-surface-variant">
+                Status
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-container-highest border border-outline-variant font-label-caps text-label-caps uppercase text-on-surface">
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${statusDotClass}`}
+                />
+                {player.status.status}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Appearances */}
+        <div className="col-span-12 lg:col-span-9">
+          <div className="mb-4">
+            <h3 className="font-headline-sm text-headline-sm text-on-surface">
+              Appearances
+            </h3>
+            <p className="font-body-sm text-body-sm text-on-surface-variant">
+              Match participation history
+            </p>
+          </div>
+
+          {appearances.isLoading && (
+            <LoadingState label="Loading appearances..." />
+          )}
+          {appearances.error && <ErrorState error={appearances.error} />}
+
+          {appearances.data && (
+            <div className="space-y-3">
+              <AppearanceList appearances={appearances.data.appearances} />
+              <Pagination
+                page={appearances.data.page}
+                pageSize={appearances.data.pageSize}
+                totalCount={appearances.data.totalCount}
+                onPageChange={setPage}
+              />
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function OverviewRow({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
   return (
-    <div>
-      <dt className="text-xs uppercase tracking-wide text-ink-faint">
+    <div className="flex justify-between py-2 border-b border-outline-variant/50 last:border-0">
+      <span className="font-body-sm text-body-sm text-on-surface-variant">
         {label}
-      </dt>
-      <dd className="mt-0.5 font-medium text-ink">{value}</dd>
+      </span>
+      <span
+        className={
+          mono
+            ? "font-data-mono text-data-mono text-on-surface text-right"
+            : "font-body-sm text-body-sm text-on-surface font-semibold text-right"
+        }
+      >
+        {value}
+      </span>
     </div>
   );
 }

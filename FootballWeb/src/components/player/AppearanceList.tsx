@@ -17,50 +17,72 @@ export function AppearanceList({
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
-      <table className="w-full min-w-[640px] text-sm">
-        <thead>
-          <tr className="border-b border-surface-border text-left text-xs uppercase tracking-wide text-ink-muted">
-            <th className="px-3 py-2 font-medium">Date</th>
-            <th className="px-3 py-2 font-medium">Opponent</th>
-            <th className="px-3 py-2 font-medium">Competition</th>
-            <th className="px-3 py-2 font-medium">Role</th>
-            <th className="px-3 py-2 font-medium">Position</th>
-            <th className="px-3 py-2 font-medium">Minutes</th>
-            <th className="px-3 py-2 font-medium">Goals</th>
-            <th className="px-3 py-2 font-medium">Assists</th>
+    <div className="w-full border border-outline-variant rounded bg-surface-container overflow-hidden">
+      <table className="w-full text-left border-collapse">
+        <thead className="bg-surface-container-high border-b border-outline-variant">
+          <tr>
+            <th className="font-label-caps text-label-caps text-on-surface-variant uppercase p-3">
+              Date
+            </th>
+            <th className="font-label-caps text-label-caps text-on-surface-variant uppercase p-3">
+              Competition
+            </th>
+            <th className="font-label-caps text-label-caps text-on-surface-variant uppercase p-3">
+              Opponent
+            </th>
+            <th className="font-label-caps text-label-caps text-on-surface-variant uppercase p-3">
+              Playing Time
+            </th>
+            <th className="font-label-caps text-label-caps text-on-surface-variant uppercase p-3 text-right">
+              Goals
+            </th>
+            <th className="font-label-caps text-label-caps text-on-surface-variant uppercase p-3 text-right">
+              Assists
+            </th>
           </tr>
         </thead>
-        <tbody>
-          {appearances.map((a) => (
+        <tbody className="font-data-mono text-data-mono text-on-surface divide-y divide-outline-variant/30">
+          {appearances.map((a, i) => (
             <tr
               key={a.matchId}
-              className="border-b border-surface-border last:border-0"
+              className={`hover:bg-primary-container/10 transition-colors group relative h-row-height-compact ${
+                i % 2 === 1 ? "bg-surface-container-low/50" : ""
+              }`}
             >
-              <td className="px-3 py-2 text-ink">
+              <td className="p-3">
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
                 {formatMatchDate(a.matchDate)}
               </td>
-              <td className="px-3 py-2 text-ink">{a.opponentName ?? "—"}</td>
-              <td className="px-3 py-2 text-ink-muted">
+              <td className="p-3 text-on-surface-variant">
                 {a.competitionName ?? "—"}
               </td>
-              <td className="px-3 py-2">
+              <td className="p-3 font-body-sm text-body-sm text-on-surface">
+                {a.opponentName ?? "—"}
+              </td>
+              <td className="p-3">
                 <span
-                  className={`rounded px-1.5 py-0.5 text-xs font-medium ${
+                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border border-outline-variant text-on-surface ${
                     a.isStarter
-                      ? "bg-brand-50 text-brand-600"
-                      : "bg-surface-subtle text-ink-muted"
+                      ? "bg-surface-container-highest"
+                      : "bg-surface-container-highest/50"
                   }`}
                 >
-                  {a.isStarter ? "Starter" : "Sub"}
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      a.isStarter ? "bg-primary" : "bg-outline"
+                    }`}
+                  />
+                  {a.isStarter ? "STARTER" : "SUB"}
+                  {a.roleShort ? ` · ${a.roleShort}` : ""}
+                  {" · "}
+                  {formatMinuteRange(a.minuteIn, a.minuteOut)}
                 </span>
               </td>
-              <td className="px-3 py-2 text-ink-muted">
-                {a.positionPlayed?.positionName ?? "—"}
-                {a.roleShort ? ` (${a.roleShort})` : ""}
+              <td className="p-3 text-right tabular-nums">
+                {a.goals > 0 ? a.goals : "—"}
               </td>
-              <td className="px-3 py-2 tabular-nums text-ink-muted">
-                {formatMinuteRange(a.minuteIn, a.minuteOut)}
+              <td className="p-3 text-right tabular-nums">
+                {a.assists > 0 ? a.assists : "—"}
               </td>
             </tr>
           ))}

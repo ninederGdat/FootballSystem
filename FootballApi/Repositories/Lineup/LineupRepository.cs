@@ -1,5 +1,6 @@
 using FootballApi.Repositories.Lineup;
 using FootballApi.Repositories.Match;
+using FootballApi.Repositories.MatchEvent;
 using FootballSystem.Shared.Infrastructure;
 using FootballSystem.Shared.Models.Clean;
 
@@ -7,11 +8,16 @@ public class LineupRepository : ILineupRepository
 {
     private readonly Supabase.Client _client;
     private readonly IMatchRepository _matchRepository;
+    private readonly IMatchEventRepository _matchEventRepository;
 
-    public LineupRepository(SupabaseClientFactory factory, IMatchRepository matchRepository)
+    public LineupRepository(
+        SupabaseClientFactory factory,
+        IMatchRepository matchRepository,
+        IMatchEventRepository matchEventRepository)
     {
         _client = factory.CreateServiceRoleClient();
         _matchRepository = matchRepository;
+        _matchEventRepository = matchEventRepository;
     }
 
     public async Task<LineupClean?> GetLineupByMatchIdAsync(long matchId, CancellationToken ct = default)
@@ -105,14 +111,27 @@ var matchesById = matches
     .GroupBy(m => m.MatchId)
     .ToDictionary(g => g.Key, g => g.First());   
 
+    // Đếm goals/assists của playerId trong từng match, group theo match_id để tra cứu O(1).
+    // Goals: chỉ tính event_type == "goal" (loại own_goal ra khỏi thành tích ghi bàn của cầu thủ).
+    var events = await _matchEventRepository.GetEventsByMatchIdsAsync(matchIds, ct);
+    var goalsByMatch = events
+        .Where(e => e.EventType == "goal" && e.PlayerId == playerId)
+        .GroupBy(e => e.MatchId)
+        .ToDictionary(g => g.Key, g => g.Count());
+    var assistsByMatch = events
+        .Where(e => e.AssistPlayerId == playerId)
+        .GroupBy(e => e.MatchId)
+        .ToDictionary(g => g.Key, g => g.Count());
+
     var items = pageItems.Select(lp =>
     {
         var lineup = lp.LineupId.HasValue ? lineupsById.GetValueOrDefault(lp.LineupId.Value) : null;
         var match = lineup is not null ? matchesById.GetValueOrDefault(lineup.MatchId) : null;
+        var matchId = match?.MatchId ?? 0;
 
         return new PlayerAppearanceRecord
         {
-            MatchId = match?.MatchId ?? 0,
+            MatchId = matchId,
             MatchDate = match?.MatchDate ?? default,
             OpponentName = match?.OpponentName,
             CompetitionName = match?.CompetitionName,
@@ -120,7 +139,9 @@ var matchesById = matches
             PositionCode = lp.PositionCode,
             RoleId = lp.RoleId,
             MinuteIn = lp.MinuteIn,
-            MinuteOut = lp.MinuteOut
+            MinuteOut = lp.MinuteOut,
+            Goals = goalsByMatch.GetValueOrDefault(matchId, 0),
+            Assists = assistsByMatch.GetValueOrDefault(matchId, 0)
         };
     }).ToList();
 

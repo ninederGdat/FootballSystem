@@ -20,4 +20,13 @@ public class MatchEventRepository : IMatchEventRepository
             .Get(ct);
         return result.Models;
     }
+
+    public async Task<List<MatchEventClean>> GetEventsByMatchIdsAsync(List<long> matchIds, CancellationToken ct = default)
+    {
+        if (matchIds.Count == 0) return [];
+        var result = await _client.From<MatchEventClean>()
+            .Filter("match_id", Supabase.Postgrest.Constants.Operator.In, matchIds)
+            .Get(ct);
+        return result.Models;
+    }
 }

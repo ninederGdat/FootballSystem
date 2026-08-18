@@ -1,0 +1,22 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "ollama/llama3.2:3b",
+  "provider": {
+    "ollama": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Ollama (local)",
+      "options": {
+        "baseURL": "http://localhost:11434/v1"
+      },
+      "models": {
+        "llama3.2:3b": {
+          "name": "LLaMA 3.2 3B",
+          "tool_call": true,
+          "options": {
+            "num_ctx": 2048
+          }
+        }
+      }
+    }
+  }
+}

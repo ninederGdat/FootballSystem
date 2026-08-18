@@ -169,7 +169,9 @@ namespace FootballApi.Services.Player
                     RoleName = item.RoleId.HasValue ? rolesById.GetValueOrDefault(item.RoleId.Value)?.RoleName : null,
                     RoleShort = item.RoleId.HasValue ? rolesById.GetValueOrDefault(item.RoleId.Value)?.RoleShort : null,
                     MinuteIn = item.MinuteIn,
-                    MinuteOut = item.MinuteOut
+                    MinuteOut = item.MinuteOut,
+                    Goals = item.Goals,
+                    Assists = item.Assists
                 };
             }).ToList();
 

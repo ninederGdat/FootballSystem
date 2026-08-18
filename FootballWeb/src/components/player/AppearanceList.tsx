@@ -27,6 +27,8 @@ export function AppearanceList({
             <th className="px-3 py-2 font-medium">Role</th>
             <th className="px-3 py-2 font-medium">Position</th>
             <th className="px-3 py-2 font-medium">Minutes</th>
+            <th className="px-3 py-2 font-medium">Goals</th>
+            <th className="px-3 py-2 font-medium">Assists</th>
           </tr>
         </thead>
         <tbody>

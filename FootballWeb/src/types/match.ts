@@ -66,3 +66,33 @@ export interface MatchResponse {
   events: MatchEventItemResponse[];
   lineup: LineupResponse | null;
 }
+
+export type MatchStatus = "UPCOMING" | "live" | "FINISHED" | "cancelled";
+ 
+export interface MatchSummaryDTO {
+  matchId: number;
+  opponentName: string;
+  opponentTeamId: number | null;
+  competitionName: string;
+  matchDate: string; // ISO 8601
+  homeOrAway: "home" | "away";
+  scoreHome: number | null;
+  scoreAway: number | null;
+  status: MatchStatus;
+}
+ 
+export interface MatchSearchQuery {
+  fromDate?: string; // yyyy-MM-dd
+  toDate?: string; // yyyy-MM-dd
+  opponent?: string;
+  status?: MatchStatus;
+  page?: number;
+  pageSize?: number;
+}
+ 
+export interface MatchSearchResult {
+  items: MatchSummaryDTO[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}

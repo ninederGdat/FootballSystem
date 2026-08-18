@@ -1,89 +1,310 @@
-import { useState } from "react";
-import { useMatch } from "../features/matches/hooks"; 
-import { MatchCard } from "../components/match/MatchCard";
-import { LoadingState, ErrorState } from "../components/common/States";
+import { Fragment, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useMatches } from "../features/matches/hooks"; 
+import { ApiError } from "../api/client";
+import type { MatchSearchQuery, MatchStatus, MatchSummaryDTO } from "../types/match";
 
-/**
- * IMPLEMENTATION NOTE (backend gap, see Step 18 of the brief):
- *
- * FootballApi's MatchesController only exposes:
- *   GET /api/matches/{matchId}
- *
- * There is no GET /api/matches (list) endpoint, so a real Match List page
- * can't be built against actual data yet. Rather than invent a fake list
- * endpoint or hardcode match IDs as if they were real data, this page:
- *
- *   1. Explains the gap.
- *   2. Lets you open a match by ID (using the endpoint that DOES exist),
- *      so Match Detail / Lineup / Timeline can be built and tested now.
- *
- * Suggested smallest backend addition (backwards compatible - purely
- * additive, doesn't touch GetMatch):
- *
- *   GET /api/matches?teamId=8455&page=1&pageSize=20
- *     -> paginated list of MatchClean projected to a light MatchSummaryResponse
- *        (matchId, opponentName, competitionName, matchDate, homeOrAway,
- *        scoreHome, scoreAway, status) - i.e. MatchResponse without
- *        events/lineup, since the list view doesn't need those.
- *
- * Once that endpoint exists, replace the body of this component with a
- * paginated fetch + `<MatchCard>` grid, same pattern as PlayerListPage.
- */
-export function MatchListPage() {
-  const [matchIdInput, setMatchIdInput] = useState("");
-  const [lookupId, setLookupId] = useState<number | null>(null);
+const PAGE_SIZE = 20;
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-ink">Matches</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          There's no match list endpoint on the backend yet (
-          <code className="rounded bg-surface-subtle px-1 py-0.5">
-            GET /api/matches
-          </code>{" "}
-          is missing) — only lookup by ID. Enter a known match ID to preview
-          the Match Detail page below.
-        </p>
-      </div>
+// TODO(backend): MatchSummaryDTO has no field for "our" team's own name/code.
+// Hardcoded here for the single-team (Chelsea, teamId 8455) scope described
+// in business_logic.md. If the system ever tracks more than one team this
+// needs to come from config/API instead.
+const OUR_TEAM_NAME = "Chelsea";
+const OUR_TEAM_CODE = "CHE";
 
-      <form
-        className="flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const id = Number(matchIdInput);
-          if (Number.isFinite(id) && id > 0) setLookupId(id);
-        }}
-      >
-        <input
-          value={matchIdInput}
-          onChange={(e) => setMatchIdInput(e.target.value)}
-          placeholder="e.g. 4685783"
-          className="w-56 rounded-md border border-surface-border bg-surface px-3 py-2 text-sm outline-none focus:border-brand-500"
-        />
-        <button
-          type="submit"
-          className="rounded-md bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
-        >
-          Open match
-        </button>
-      </form>
-
-      {lookupId !== null && <MatchPreview matchId={lookupId} />}
-    </div>
-  );
+// TODO(backend): MatchSummaryDTO has no `opponentCode` (3-letter club code,
+// e.g. "MUN" for Manchester United). Slicing the name is a placeholder and
+// will be wrong for many clubs — ask backend to add opponentCode to the DTO
+// (Fotmob raw data already carries it) instead of deriving it client-side.
+function fallbackCode(name: string): string {
+  return name.slice(0, 3).toUpperCase();
 }
 
-function MatchPreview({ matchId }: { matchId: number }) {
-  const { data, isLoading, error } = useMatch(matchId);
+// TODO(backend): no /api/competitions endpoint yet to drive this dropdown
+// dynamically. Static list mirrors the mockup; replace once available.
+const COMPETITION_OPTIONS = ["All Competitions", "Premier League", "Champions League", "FA Cup"];
 
-  if (isLoading) return <LoadingState label="Loading match..." />;
-  if (error) return <ErrorState error={error} />;
-  if (!data) return null;
+const STATUS_TABS: { label: string; value: MatchStatus | "all" }[] = [
+  { label: "All", value: "all" },
+  { label: "Upcoming", value: "UPCOMING" },
+  { label: "Finished", value: "FINISHED" },
+];
+
+function monthGroupKey(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { month: "long", year: "numeric" }).toUpperCase();
+}
+
+function formatShortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function formatKickoffTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
+function statusBadge(status: MatchStatus): { label: string; dotClass: string } {
+  switch (status) {
+    case "live":
+      return { label: "LIVE", dotClass: "bg-error animate-pulse" };
+    case "FINISHED":
+      return { label: "FT", dotClass: "bg-secondary" };
+    case "cancelled":
+      return { label: "CANC.", dotClass: "bg-error" };
+    case "UPCOMING":
+    default:
+      return { label: "UPCOMING", dotClass: "bg-primary-container" };
+  }
+}
+
+interface Row {
+  homeName: string;
+  homeCode: string;
+  awayName: string;
+  awayCode: string;
+}
+
+function toRow(match: MatchSummaryDTO): Row {
+  if (match.homeOrAway === "home") {
+    return {
+      homeName: OUR_TEAM_NAME,
+      homeCode: OUR_TEAM_CODE,
+      awayName: match.opponentName,
+      awayCode: fallbackCode(match.opponentName),
+    };
+  }
+  return {
+    homeName: match.opponentName,
+    homeCode: fallbackCode(match.opponentName),
+    awayName: OUR_TEAM_NAME,
+    awayCode: OUR_TEAM_CODE,
+  };
+}
+
+function groupByMonth(items: MatchSummaryDTO[]): [string, MatchSummaryDTO[]][] {
+  const groups = new Map<string, MatchSummaryDTO[]>();
+  for (const item of items) {
+    const key = monthGroupKey(item.matchDate);
+    const bucket = groups.get(key);
+    if (bucket) bucket.push(item);
+    else groups.set(key, [item]);
+  }
+  return Array.from(groups.entries());
+}
+
+export function MatchListPage() {
+  const navigate = useNavigate();
+
+  const [page, setPage] = useState(1);
+  const [status, setStatus] = useState<MatchStatus | "all">("all");
+  const [competition, setCompetition] = useState("All Competitions");
+
+  const query: MatchSearchQuery = useMemo(
+    () => ({
+      page,
+      pageSize: PAGE_SIZE,
+      status: status === "all" ? undefined : status,
+    }),
+    [page, status],
+  );
+
+  const { data, isLoading, isError, error, isFetching } = useMatches(query);
+
+  // Competition filter applied client-side against the current page until
+  // MatchSearchQuery grows a `competition` param on the backend.
+  const filteredItems = useMemo(() => {
+    const items = data?.items ?? [];
+    if (competition === "All Competitions") return items;
+    return items.filter((m) => m.competitionName === competition);
+  }, [data, competition]);
+
+  const monthGroups = useMemo(() => groupByMonth(filteredItems), [filteredItems]);
+
+  const totalCount = data?.totalCount ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
+  function handleStatusChange(value: MatchStatus | "all") {
+    setStatus(value);
+    setPage(1);
+  }
+
+  const errorMessage =
+    error instanceof ApiError ? error.message : error instanceof Error ? error.message : null;
 
   return (
-    <div className="max-w-sm">
-      <MatchCard match={data} />
+    <div className="p-container-padding max-w-[1600px] mx-auto">
+      {/* Page Header */}
+      <div className="mb-gutter">
+        <h2 className="font-display-lg text-display-lg text-on-surface mb-2">Matches</h2>
+        <p className="font-body-md text-body-md text-on-surface-variant">Results and upcoming fixtures</p>
+      </div>
+
+      {/* Toolbar: status tabs + competition filter */}
+      <div className="bg-surface-container border border-outline-variant rounded-lg p-unit mb-gutter flex flex-wrap gap-gutter items-center justify-between">
+        <div className="flex items-center gap-1 bg-surface-container-low border border-outline-variant rounded-DEFAULT p-1">
+          {STATUS_TABS.map((tab) => (
+            <button
+              key={tab.value}
+              onClick={() => handleStatusChange(tab.value)}
+              className={
+                tab.value === status
+                  ? "px-3 py-1.5 rounded-DEFAULT bg-primary-container text-on-primary-container font-label-caps text-label-caps uppercase transition-colors"
+                  : "px-3 py-1.5 rounded-DEFAULT text-on-surface-variant hover:text-on-surface font-label-caps text-label-caps uppercase transition-colors"
+              }
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2 border border-outline-variant rounded-DEFAULT bg-surface-container-low p-1">
+          <span className="text-outline-variant font-label-caps text-label-caps px-2">COMPETITION</span>
+          <select
+            className="bg-transparent border-none text-on-surface focus:ring-0 font-body-sm py-1 pl-2 pr-8 cursor-pointer appearance-none"
+            value={competition}
+            onChange={(e) => setCompetition(e.target.value)}
+          >
+            {COMPETITION_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Data Table */}
+      <div className="bg-surface-container border border-outline-variant rounded-lg overflow-hidden flex flex-col shadow-[0_0_0_1px_rgba(71,85,105,0.1)]">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse whitespace-nowrap">
+            <thead>
+              <tr className="bg-surface-container-high border-b border-outline-variant">
+                <th className="font-label-caps text-label-caps text-on-surface-variant py-3 px-4 w-24">DATE</th>
+                <th className="font-label-caps text-label-caps text-on-surface-variant py-3 px-4 w-40">COMPETITION</th>
+                <th className="font-label-caps text-label-caps text-on-surface-variant py-3 px-4 text-right">HOME</th>
+                <th className="font-label-caps text-label-caps text-on-surface-variant py-3 px-4 w-28 text-center">SCORE</th>
+                <th className="font-label-caps text-label-caps text-on-surface-variant py-3 px-4">AWAY</th>
+                <th className="font-label-caps text-label-caps text-on-surface-variant py-3 px-4 w-28">STATUS</th>
+              </tr>
+            </thead>
+            <tbody className="font-body-sm">
+              {isLoading && (
+                <tr>
+                  <td colSpan={6} className="py-8 px-4 text-center text-on-surface-variant">
+                    Loading matches...
+                  </td>
+                </tr>
+              )}
+
+              {isError && (
+                <tr>
+                  <td colSpan={6} className="py-8 px-4 text-center text-error">
+                    Failed to load matches{errorMessage ? `: ${errorMessage}` : ""}
+                  </td>
+                </tr>
+              )}
+
+              {!isLoading && !isError && filteredItems.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="py-8 px-4 text-center text-on-surface-variant">
+                    No matches found for the selected filters.
+                  </td>
+                </tr>
+              )}
+
+              {!isLoading &&
+                !isError &&
+                monthGroups.map(([monthLabel, matches]) => (
+                  <Fragment key={`group-${monthLabel}`}>
+                    <tr className="bg-surface-container-low">
+                      <td
+                        colSpan={6}
+                        className="py-1.5 px-4 font-label-caps text-label-caps text-on-surface-variant tracking-wider"
+                      >
+                        {monthLabel}
+                      </td>
+                    </tr>
+                    {matches.map((match) => {
+                      const row = toRow(match);
+                      const badge = statusBadge(match.status);
+                      const scoreText =
+                        match.status === "UPCOMING" || match.scoreHome === null || match.scoreAway === null
+                          ? formatKickoffTime(match.matchDate)
+                          : `${match.scoreHome} — ${match.scoreAway}`;
+
+                      return (
+                        <tr
+                          key={match.matchId}
+                          onClick={() => navigate(`/matches/${match.matchId}`)}
+                          className="match-row h-row-height-compact border-b border-outline-variant/30 hover:bg-primary-container/10 group cursor-pointer transition-colors relative"
+                        >
+                          <td className="py-2 px-4 font-data-mono text-data-mono text-on-surface-variant relative">
+                            <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                            {formatShortDate(match.matchDate)}
+                          </td>
+                          <td className="py-2 px-4 text-on-surface-variant">{match.competitionName}</td>
+                          <td className="py-2 px-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <span className="text-on-surface font-semibold">{row.homeName}</span>
+                              <span className="w-6 h-6 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center font-data-mono text-[10px] text-on-surface-variant">
+                                {row.homeCode}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-2 px-4 text-center font-data-mono text-data-mono text-on-surface">
+                            {scoreText}
+                          </td>
+                          <td className="py-2 px-4">
+                            <div className="flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center font-data-mono text-[10px] text-on-surface-variant">
+                                {row.awayCode}
+                              </span>
+                              <span className="text-on-surface font-semibold">{row.awayName}</span>
+                            </div>
+                          </td>
+                          <td className="py-2 px-4">
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-container-high border border-outline-variant text-[10px] font-bold text-on-surface uppercase tracking-wider">
+                              <span className={`w-1.5 h-1.5 rounded-full ${badge.dotClass}`} />
+                              {badge.label}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </Fragment>
+                ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        <div className="bg-surface-container-high border-t border-outline-variant p-3 flex items-center justify-between">
+          <span className="font-body-sm text-body-sm text-on-surface-variant">
+            {totalCount === 0 ? "No matches" : `Showing ${filteredItems.length} of ${totalCount} matches`}
+            {isFetching && !isLoading ? " · refreshing..." : ""}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              className="p-1 text-on-surface-variant hover:text-on-surface disabled:opacity-50 transition-colors"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              <span className="material-symbols-outlined">chevron_left</span>
+            </button>
+            <span className="font-data-mono text-data-mono text-on-surface px-2">
+              {page} / {totalPages}
+            </span>
+            <button
+              className="p-1 text-on-surface-variant hover:text-on-surface disabled:opacity-50 transition-colors"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              <span className="material-symbols-outlined">chevron_right</span>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

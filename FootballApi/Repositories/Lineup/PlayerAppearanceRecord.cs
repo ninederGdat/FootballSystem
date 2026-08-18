@@ -11,4 +11,6 @@ public class PlayerAppearanceRecord
     public int? RoleId { get; set; }
     public int? MinuteIn { get; set; }
     public int? MinuteOut { get; set; }
+    public int Goals { get; set; }
+    public int Assists { get; set; }
 }

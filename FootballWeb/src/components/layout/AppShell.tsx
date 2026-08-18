@@ -1,41 +1,100 @@
 import { NavLink, Outlet } from "react-router-dom";
 
 const navItems = [
-  { to: "/matches", label: "Matches" },
-  { to: "/players", label: "Players" },
+  { to: "/", label: "Dashboard", icon: "dashboard" },
+  { to: "/players", label: "Players", icon: "groups" },
+  { to: "/matches", label: "Matches", icon: "sports_soccer" },
 ];
 
 export function AppShell() {
   return (
-    <div className="flex min-h-screen flex-col md:flex-row">
-      <aside className="flex shrink-0 flex-col border-b border-surface-border bg-brand-500 text-white md:h-screen md:w-56 md:border-b-0 md:border-r">
-        <div className="px-5 py-5 text-lg font-semibold tracking-tight">
-          FootballSystem
+    <div className="flex min-h-screen md:flex-row">
+      {/* Sidebar */}
+      <aside className="flex w-full shrink-0 flex-col border-b border-outline-variant bg-surface-container md:h-screen md:w-64 md:border-b-0 md:border-r">
+        <div className="px-5 py-5">
+          <div className="font-headline-sm text-on-surface">FootballSystem</div>
+          <div className="mt-0.5 font-label-caps uppercase text-outline">
+            Intelligence Unit
+          </div>
         </div>
-        <nav className="flex gap-1 px-3 pb-3 md:flex-col md:pb-0">
+
+        <nav className="flex flex-1 flex-col gap-1 px-3">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
+              end={item.to === "/"}
               className={({ isActive }) =>
-                `rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                `flex items-center gap-3 rounded px-3 py-2 font-body-md transition-colors ${
                   isActive
-                    ? "bg-white/15 text-white"
-                    : "text-white/70 hover:bg-white/10 hover:text-white"
+                    ? "bg-primary-container/20 text-primary"
+                    : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
                 }`
               }
             >
+              <span className="material-symbols-outlined text-[20px]">
+                {item.icon}
+              </span>
               {item.label}
             </NavLink>
           ))}
         </nav>
+
+        <div className="flex items-center gap-3 border-t border-outline-variant px-5 py-4">
+          <img
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuABQNjRL8r36xJNM6U6IftymL9VTfSbcKdbTF61SziL5QSX1qczJgiIAyaMigiAuhdbXy_agWOfa1mCbcPhQBQmQp-7JPkQvp5QBWD49Ek90JvJejcoK2s2bJYDMv6JpptM5nGMWCUknxn-3izI-2b1iPd8Ncj3nbTM2WYqAJJPsjBc439Pt-ozDWNHKo_hLeekkUq7O_9c4GQUmcwL6bIFl-5-CsOWE-44PL4JUW2-F-DpFlV0DQFOuA"
+            alt="Analyst profile"
+            className="h-9 w-9 rounded-full object-cover"
+          />
+          <div className="min-w-0">
+            <div className="truncate font-body-sm text-on-surface">
+              Analyst 01
+            </div>
+            <div className="truncate font-label-caps uppercase text-outline">
+              Data Team
+            </div>
+          </div>
+        </div>
       </aside>
 
-      <main className="flex-1 bg-surface-subtle">
-        <div className="mx-auto max-w-5xl px-4 py-6 md:px-8 md:py-8">
-          <Outlet />
-        </div>
-      </main>
+      {/* Main column */}
+      <div className="flex min-h-screen flex-1 flex-col bg-background">
+        <header className="flex items-center justify-end gap-4 border-b border-outline-variant px-4 py-3 md:px-8">
+          <button
+            type="button"
+            aria-label="Search"
+            className="flex h-9 w-9 items-center justify-center rounded text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface"
+          >
+            <span className="material-symbols-outlined text-[20px]">
+              search
+            </span>
+          </button>
+          <button
+            type="button"
+            aria-label="Notifications"
+            className="flex h-9 w-9 items-center justify-center rounded text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface"
+          >
+            <span className="material-symbols-outlined text-[20px]">
+              notifications
+            </span>
+          </button>
+          <button
+            type="button"
+            aria-label="Settings"
+            className="flex h-9 w-9 items-center justify-center rounded text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface"
+          >
+            <span className="material-symbols-outlined text-[20px]">
+              settings
+            </span>
+          </button>
+        </header>
+
+        <main className="flex-1">
+          <div className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8">
+            <Outlet />
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

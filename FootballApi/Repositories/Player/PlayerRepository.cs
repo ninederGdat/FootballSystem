@@ -66,6 +66,9 @@ public class PlayerRepository : IPlayerRepository
         var safePage = page < 1 ? 1 : page;
         var safePageSize = pageSize < 1 ? 20 : pageSize;
 
+        query.Order(x => x.ShirtNumber, Supabase.Postgrest.Constants.Ordering.Ascending);
+
+
         var offset = (safePage - 1) * safePageSize;
         var limit = offset + safePageSize - 1;
 

@@ -4,8 +4,26 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FootballSystem</title>
-    <script type="module" crossorigin src="/assets/index-DJjCeuQz.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DRwyghui.css">
+    <!--
+  Append inside the existing <head> of index.html, alongside the current
+  <title>/<meta> tags. Without these, font-family classes like
+  "font-data-mono" or "font-label-caps" resolve to the browser's default
+  serif/sans-serif since the actual font files are never loaded, and the
+  material-symbols-outlined icon classes (search, chevron_left, etc. used
+  across MatchListPage/AppShell) render as literal text instead of icons.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+  rel="stylesheet"
+/>
+<link
+  href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap"
+  rel="stylesheet"
+/>
+    <script type="module" crossorigin src="/assets/index-BKrqZQVM.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-3pGWfvOq.css">
   </head>
   <body class="bg-surface-subtle text-ink">
     <div id="root"></div>

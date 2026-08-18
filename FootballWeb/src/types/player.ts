@@ -44,6 +44,8 @@ export interface PlayerAppearanceDTO {
   roleShort: string | null;
   minuteIn: number | null;
   minuteOut: number | null;
+  goals: number;
+  assists: number;
 }
 
 export interface PlayerAppearancesResult {

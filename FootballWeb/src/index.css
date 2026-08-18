@@ -11,3 +11,51 @@ body,
 body {
   font-family: theme("fontFamily.sans");
 }
+
+/* ---------------------------------------------------------------------
+   Append into the existing src/index.css, after the @tailwind directives.
+   Without this, <body> stays with browser/Preflight defaults (white bg,
+   black text) even though tailwind.config.js now defines the tokens —
+   the tokens only exist as utility classes, nothing applies them globally.
+--------------------------------------------------------------------- */
+
+body {
+  background-color: theme("colors.background");
+  color: theme("colors.on-background");
+}
+
+/* Subtle row hover accent line — used by the "match-row" class in
+   MatchListPage.tsx (kept as raw CSS since it's a ::before pseudo-element,
+   not expressible as a single Tailwind utility). */
+.match-row {
+  position: relative;
+}
+
+.match-row:hover::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: theme("colors.primary-container");
+}
+
+/* Required so <span class="material-symbols-outlined">search</span>
+   renders as an icon glyph instead of the literal word "search". The
+   Google Fonts <link> only loads the font file; this rule applies it. */
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+}

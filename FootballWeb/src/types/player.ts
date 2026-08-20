@@ -64,6 +64,10 @@ export interface PlayerSummaryDTO {
   positionName: string | null;
   nationality: string | null;
   shirtNumber: number | null;
+  age: number | null;
+  status: string | null;
+  marketValue: number | null;
+  contractUntil: string | null; // DateOnly -> "YYYY-MM-DD"
 }
 
 export interface PlayerSearchResult {

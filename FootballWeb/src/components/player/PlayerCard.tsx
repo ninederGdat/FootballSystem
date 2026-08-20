@@ -13,7 +13,12 @@ export function PlayerCard({ player }: { player: PlayerSummaryDTO }) {
       <div className="min-w-0">
         <p className="truncate font-medium text-ink">{player.name}</p>
         <p className="truncate text-xs text-ink-muted">
-          {[player.positionName, player.teamName, player.nationality]
+          {[
+            player.positionName,
+            player.teamName,
+            player.nationality,
+            player.age?.toString(),
+          ]
             .filter(Boolean)
             .join(" · ") || "—"}
         </p>

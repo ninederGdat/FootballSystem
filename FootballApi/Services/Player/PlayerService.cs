@@ -234,11 +234,36 @@ namespace FootballApi.Services.Player
                     PositionCode = player.PreferredPositionCode,
                     PositionName = position?.PositionName,
                     Nationality = player.Nationality,
-                    ShirtNumber = player.ShirtNumber
+                    ShirtNumber = player.ShirtNumber,
+                    Age = CalculateAge(player.DateOfBirth),
+                    Status = player.Status,
+                    //Format "90.00"
+                    MarketValue = player.MarketValue is not null ? Math.Round(player.MarketValue.Value, 2) : null,
+                    ContractUntil = player.ContractUntil
                 };
             }).ToList();
 
             return (items, totalCount);
         }
+
+        /// <summary>
+        /// Computes age in whole years from a birth date, as of today (UTC).
+        /// Returns null if the birth date is unknown.
+        /// </summary>
+        private static int? CalculateAge(DateOnly? dateOfBirth)
+        {
+            if (dateOfBirth is null) return null;
+
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var age = today.Year - dateOfBirth.Value.Year;
+
+            // Subtract one year if the birthday hasn't happened yet this year.
+            if (dateOfBirth.Value > today.AddYears(-age))
+                age--;
+
+            return age;
+        }
     }
+
+    
 }

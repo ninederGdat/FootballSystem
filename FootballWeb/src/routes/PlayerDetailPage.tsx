@@ -4,6 +4,7 @@ import { usePlayer, usePlayerAppearances } from "../features/players/hooks";
 import { AppearanceList } from "../components/player/AppearanceList";
 import { Pagination } from "../components/common/Pagination";
 import { LoadingState, ErrorState } from "../components/common/States";
+import { formatMarketValue } from "../lib/format";
 
 export function PlayerDetailPage() {
   const { playerId } = useParams<{ playerId: string }>();
@@ -74,7 +75,7 @@ export function PlayerDetailPage() {
               </p>
               <p className="font-data-mono text-[18px] text-on-surface font-bold">
                 {player.contract.marketValue != null
-                  ? `€${player.contract.marketValue.toLocaleString()}`
+                  ? formatMarketValue(player.contract.marketValue)
                   : "—"}
               </p>
             </div>

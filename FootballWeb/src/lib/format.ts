@@ -36,3 +36,17 @@ export function formatStatus(status: string): string {
   };
   return map[status] ?? status;
 }
+
+export function formatMarketValue(value: number | null | undefined): string {
+  if (value == null) return "—";
+
+  const abs = Math.abs(value);
+
+  if (abs >= 1_000_000) {
+    return `€${(value / 1_000_000).toFixed(2)}M`;
+  }
+  if (abs >= 1_000) {
+    return `€${(value / 1_000).toFixed(0)}K`;
+  }
+  return `€${value.toLocaleString()}`;
+}

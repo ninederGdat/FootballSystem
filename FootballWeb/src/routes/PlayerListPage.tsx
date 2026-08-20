@@ -7,6 +7,7 @@ import {
   EmptyState,
 } from "../components/common/States";
 import type { PlayerSummaryDTO } from "../types/player";
+import { formatMarketValue } from "../lib/format";
 
 const PAGE_SIZE = 20;
 
@@ -116,6 +117,18 @@ export function PlayerListPage() {
                   <th className="w-32 px-4 py-3 font-label-caps uppercase text-on-surface-variant">
                     Nat
                   </th>
+                  <th className="w-24 px-4 py-3 font-label-caps uppercase text-on-surface-variant">
+                    Age
+                  </th>
+                  <th className="w-32 px-4 py-3 font-label-caps uppercase text-on-surface-variant">
+                    Status
+                  </th>
+                  <th className="w-32 px-4 py-3 font-label-caps uppercase text-on-surface-variant">
+                    Value
+                  </th>
+                  <th className="w-32 px-4 py-3 font-label-caps uppercase text-on-surface-variant">
+                    Contact
+                  </th>
                 </tr>
               </thead>
               <tbody className="font-body-sm">
@@ -197,6 +210,20 @@ function PlayerRow({
       </td>
       <td className="px-4 py-2 text-on-surface-variant">
         {player.nationality ?? "-"}
+      </td>
+      <td className="px-4 py-2 font-data-mono text-on-surface-variant">
+        {player.age != null ? player.age : "-"}
+      </td>
+      <td className="px-4 py-2 text-on-surface-variant">
+        {player.status ?? "-"}
+      </td>
+      <td className="px-4 py-2 text-on-surface-variant">
+        {player.marketValue != null
+          ? formatMarketValue(player.marketValue)
+          : "-"}
+      </td>
+      <td className="px-4 py-2 text-on-surface-variant">
+        {player.contractUntil ?? "-"}
       </td>
     </tr>
   );

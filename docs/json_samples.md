@@ -30,7 +30,10 @@ Documentation for raw JSON structures extracted from Fotmob used in the **Footba
       "key": "centerattackingmidfielder"
     },
     "nonPrimaryPositions": [
-      { "label": "Right Winger", "key": "rightwinger" }
+      {
+        "label": "Right Winger",
+        "key": "rightwinger"
+      }
     ],
     "positions": [
       {
@@ -45,15 +48,21 @@ Documentation for raw JSON structures extracted from Fotmob used in the **Footba
   "playerInformation": [
     {
       "title": "Shirt",
-      "value": { "numberValue": 10 }
+      "value": {
+        "numberValue": 10
+      }
     },
     {
       "title": "Preferred foot",
-      "value": { "key": "left" }
+      "value": {
+        "key": "left"
+      }
     },
     {
       "title": "Country",
-      "value": { "fallback": "England" },
+      "value": {
+        "fallback": "England"
+      },
       "countryCode": "ENG"
     }
   ],
@@ -78,8 +87,6 @@ Documentation for raw JSON structures extracted from Fotmob used in the **Footba
 ```
 
 ---
-
-
 
 ## 2. Team Raw
 
@@ -127,9 +134,90 @@ Documentation for raw JSON structures extracted from Fotmob used in the **Footba
 
 ---
 
+## 3. Transfer Raw
 
+**Source**: Team detail endpoint → `transfers`
 
-## 3. Match Raw
+**Purpose**: Contains player transfer history associated with a team, including permanent transfers and loan movements.
+
+The same transfer structure is used for both permanent transfers and loans. The main distinction is represented by:
+
+- `transferType.text`
+- `transferType.localizationKey`
+- `onLoan`
+- `fee.feeText`
+- `fromDate`
+- `toDate`
+
+```json
+[
+  {
+    "name": "Marc Cucurella",
+    "playerId": 873289,
+    "position": {
+      "label": "LB",
+      "key": "leftback_short"
+    },
+    "transferDate": "2026-06-15T09:22:32Z",
+    "transferText": ["To", 8633, "Real Madrid"],
+    "fromClub": "Chelsea",
+    "fromClubFullName": "Chelsea",
+    "fromClubId": 8455,
+    "toClub": "Real Madrid",
+    "toClubFullName": "Real Madrid",
+    "toClubId": 8633,
+    "fee": {
+      "feeText": "fee",
+      "localizedFeeText": "transfer_fee",
+      "value": 55000000
+    },
+    "amountEuroEstimated": null,
+    "transferType": {
+      "text": "contract",
+      "localizationKey": "contract"
+    },
+    "contractExtension": false,
+    "onLoan": false,
+    "fromDate": "2026-06-30T22:00:00Z",
+    "toDate": "2032-06-29T22:00:00Z",
+    "marketValue": 45916601
+  },
+  {
+    "name": "Tyrique George",
+    "playerId": 1424875,
+    "position": {
+      "label": "ST",
+      "key": "striker_short"
+    },
+    "transferDate": "2026-02-02T22:15:51Z",
+    "transferText": ["To", 8668, "Everton"],
+    "fromClub": "Chelsea",
+    "fromClubFullName": "Chelsea",
+    "fromClubId": 8455,
+    "toClub": "Everton",
+    "toClubFullName": "Everton",
+    "toClubId": 8668,
+    "fee": {
+      "feeText": "on loan",
+      "localizedFeeText": "on_loan"
+    },
+    "amountEuroEstimated": null,
+    "transferType": {
+      "text": "on loan",
+      "localizationKey": "on_loan"
+    },
+    "contractExtension": false,
+    "onLoan": true,
+    "fromDate": "2026-02-01T23:00:00Z",
+    "toDate": "2026-06-29T22:00:00Z",
+    "marketValue": 27346436
+  }
+]
+```
+
+---
+
+## 4. Match Raw
 
 **Source**: Fixtures section in team data (`fixtures.allFixtures.fixtures[]`)
 
@@ -163,11 +251,9 @@ Documentation for raw JSON structures extracted from Fotmob used in the **Footba
 
 ---
 
+## 5. Match Lineup Raw
 
-
-## 4. Match Lineup Raw
-
-**Source**: FotMob Match Detail API → content.lineup
+**Source**: FotMob Match Detail API → `content.lineup`
 
 **Purpose**: Contains detailed lineup information for both teams in a match, including starting XI, substitutes, formation, player positions, and basic performance data.
 
@@ -206,6 +292,7 @@ Documentation for raw JSON structures extracted from Fotmob used in the **Footba
           "fantasyScore": "1"
         }
       }
+
       // ... other 10 starting players
     ],
     "subs": [
@@ -247,8 +334,12 @@ Documentation for raw JSON structures extracted from Fotmob used in the **Footba
     "name": "Nottingham Forest",
     "rating": 7.1,
     "formation": "4-2-3-1",
-    "starters": [ /* similar structure as homeTeam */ ],
-    "subs": [ /* similar structure as homeTeam */ ],
+    "starters": [
+      /* similar structure as homeTeam */
+    ],
+    "subs": [
+      /* similar structure as homeTeam */
+    ],
     "unavailable": [],
     "coach": {
       "id": 282115,
@@ -260,43 +351,43 @@ Documentation for raw JSON structures extracted from Fotmob used in the **Footba
 
 ---
 
+## 6. Lineup Player Raw (Recommended Flat Structure)
 
+**Purpose**: Extracted from `content.lineup.homeTeam.starters`, `subs`, etc.
 
-## 5. Lineup Player Raw (Recommended Flat Structure)
-
-**Purpose**: Extracted from content.lineup.homeTeam.starters, subs, etc.
 **Source**: Standardized raw player data within a lineup for easier mapping to database.
 
 ```json
-
 {
-        "id": 789571,
-        "name": "Robert Sánchez",
-        "shirtNumber": 1,
-        "positionId": 11,
-        "usualPlayingPositionId": 0,
-        "countryName": "Spain",
-        "countryCode": "ESP",
-        "horizontalLayout": {
-          "x": 0.1,
-          "y": 0.5
-        },
-        "marketValue": 19688528,
-        "performance": {
-          "events": 
-            0: {type: "goal"},
-          "rating": 5.8,
-          "substitutionEvents": [
-            {
-              "time": 66,
-              "type": "subOut",
-              "reason": "injury"
-            }
-          ],
-          "fantasyScore": "1"
-        }
+  "id": 789571,
+  "name": "Robert Sánchez",
+  "shirtNumber": 1,
+  "positionId": 11,
+  "usualPlayingPositionId": 0,
+  "countryName": "Spain",
+  "countryCode": "ESP",
+  "horizontalLayout": {
+    "x": 0.1,
+    "y": 0.5
+  },
+  "marketValue": 19688528,
+  "performance": {
+    "events": [
+      {
+        "type": "goal"
       }
+    ],
+    "rating": 5.8,
+    "substitutionEvents": [
+      {
+        "time": 66,
+        "type": "subOut",
+        "reason": "injury"
+      }
+    ],
+    "fantasyScore": "1"
+  }
+}
 ```
 
 ---
-

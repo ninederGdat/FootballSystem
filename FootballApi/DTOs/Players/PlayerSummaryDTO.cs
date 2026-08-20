@@ -9,6 +9,10 @@ public class PlayerSummaryDTO
     public string? PositionName { get; set; }
     public string? Nationality { get; set; }
     public int? ShirtNumber { get; set; }
+    public int? Age { get; set; }
+    public string? Status { get; set; }
+    public decimal? MarketValue { get; set; }
+    public DateOnly? ContractUntil { get; set; }
 }
 
 public class PlayerSearchResult

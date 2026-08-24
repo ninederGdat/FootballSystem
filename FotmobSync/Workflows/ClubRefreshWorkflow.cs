@@ -9,6 +9,7 @@ public class ClubRefreshWorkflow
     private readonly ITeamSyncService _teamSyncService;
     private readonly IMatchSyncService _matchSyncService;
     private readonly ISquadSyncService _squadSyncService;
+    private readonly ITransferSyncService _transferSyncService;
     private readonly ILogger<ClubRefreshWorkflow> _logger;
 
     public ClubRefreshWorkflow(
@@ -16,12 +17,14 @@ public class ClubRefreshWorkflow
         ITeamSyncService teamSyncService,
         IMatchSyncService matchSyncService,
         ISquadSyncService squadSyncService,
+        ITransferSyncService transferSyncService,
         ILogger<ClubRefreshWorkflow> logger)
     {
         _teamDataModule = teamDataModule;
         _teamSyncService = teamSyncService;
         _matchSyncService = matchSyncService;
         _squadSyncService = squadSyncService;
+        _transferSyncService = transferSyncService;
         _logger = logger;
     }
 
@@ -33,23 +36,24 @@ public class ClubRefreshWorkflow
                 "Starting club refresh workflow for team {TeamId}",
                 teamId);
 
+            _logger.LogInformation("Loading team data snapshot for team {TeamId}", teamId);
             var snapshot =
                 await _teamDataModule.LoadAsync(teamId);
 
-            _logger.LogInformation("STEP 1");
+            _logger.LogInformation("STEP 1: Syncing team data for team {TeamId}", teamId);
 
             await _teamSyncService.SyncAsync(snapshot);
 
-            _logger.LogInformation("STEP 2");
+            _logger.LogInformation("STEP 2: Syncing match data for team {TeamId}", teamId);
 
             await _matchSyncService.SyncAsync(snapshot);
 
-            _logger.LogInformation("STEP 3");
+            _logger.LogInformation("STEP 3: Syncing squad data for team {TeamId}", teamId);
 
             await _squadSyncService.SyncAsync(snapshot, default);
 
-            _logger.LogInformation("STEP 4");
-
+            _logger.LogInformation("STEP 4: Syncing transfer data for team {TeamId}", teamId);
+            await _transferSyncService.SyncAsync(snapshot);
             _logger.LogInformation(
                 "Completed club refresh workflow for team {TeamId}",
                 teamId);

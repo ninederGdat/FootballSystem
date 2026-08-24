@@ -41,7 +41,7 @@ builder.Services.AddScoped<ILineupSyncService, LineupSyncService>();
 builder.Services.AddScoped<ILineupPlayerSyncService, LineupPlayerSyncService>();
 builder.Services.AddScoped<ILineupBackfillService, LineupBackfillService>();
 builder.Services.AddScoped<IMatchEventSyncService, MatchEventSyncService>();
-
+builder.Services.AddScoped<ITransferSyncService, TransferSyncService>();
 // Lookup Services
 builder.Services.AddSingleton<FormationService>();
 builder.Services.AddSingleton<PositionService>();
@@ -55,7 +55,7 @@ builder.Services.AddScoped<MatchLineupWorkflow>();
 
 // Mapping Services
 builder.Services.AddSingleton<IFotmobPositionMapper, FotmobPositionMapper>();
-builder.Services.AddSingleton<IPositionRoleResolver,PositionRoleResolver>();
+builder.Services.AddSingleton<IPositionRoleResolver, PositionRoleResolver>();
 builder.Services.AddSingleton<IPlayingTimeResolver, PlayingTimeResolver>();
 
 

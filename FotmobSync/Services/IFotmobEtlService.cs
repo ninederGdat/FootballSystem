@@ -60,3 +60,10 @@ public interface IMatchEventSyncService
         MatchDetailSnapshot snapshot,
         long matchId);
 }
+
+public interface ITransferSyncService
+{
+    Task SyncAsync(
+        TeamDataSnapshot snapshot,
+        CancellationToken cancellationToken = default);
+}

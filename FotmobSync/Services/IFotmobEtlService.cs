@@ -1,4 +1,5 @@
 ﻿using FootballSystem.Shared.Models.Clean;
+using FotmobSync.Infrastructure.Resolvers.TransferStatus;
 using FotmobSync.Modules;
 
 namespace FotmobSync.Services;
@@ -65,5 +66,12 @@ public interface ITransferSyncService
 {
     Task SyncAsync(
         TeamDataSnapshot snapshot,
+        CancellationToken cancellationToken = default);
+}
+
+public interface ITransferStatusSyncService
+{
+    Task SyncAsync(
+        IEnumerable<PlayerTransferStatus> statuses,
         CancellationToken cancellationToken = default);
 }

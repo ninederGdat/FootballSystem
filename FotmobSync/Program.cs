@@ -13,6 +13,7 @@ using FotmobSync.Infrastructure.Resolvers.PositionRole;
 using FotmobSync.Infrastructure.Resolvers.PlayingTime;
 using FootballSystem.Shared.Infrastructure;
 using FotmobSync.Mappers;
+using FotmobSync.Infrastructure.Resolvers.TransferStatus;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -42,6 +43,7 @@ builder.Services.AddScoped<ILineupPlayerSyncService, LineupPlayerSyncService>();
 builder.Services.AddScoped<ILineupBackfillService, LineupBackfillService>();
 builder.Services.AddScoped<IMatchEventSyncService, MatchEventSyncService>();
 builder.Services.AddScoped<ITransferSyncService, TransferSyncService>();
+builder.Services.AddScoped<ITransferStatusSyncService, TransferStatusSyncService>();
 // Lookup Services
 builder.Services.AddSingleton<FormationService>();
 builder.Services.AddSingleton<PositionService>();
@@ -57,7 +59,7 @@ builder.Services.AddScoped<MatchLineupWorkflow>();
 builder.Services.AddSingleton<IFotmobPositionMapper, FotmobPositionMapper>();
 builder.Services.AddSingleton<IPositionRoleResolver, PositionRoleResolver>();
 builder.Services.AddSingleton<IPlayingTimeResolver, PlayingTimeResolver>();
-
+builder.Services.AddSingleton<ITransferStatusResolver, TransferStatusResolver>();
 
 var quartzOptions = builder.Configuration
     .GetSection(QuartzSyncOptions.SectionName)

@@ -1,3 +1,5 @@
+using FotmobSync.Infrastructure.Resolvers.TransferStatus;
+using FotmobSync.Mappers;
 using FotmobSync.Modules;
 using FotmobSync.Services;
 
@@ -10,6 +12,8 @@ public class ClubRefreshWorkflow
     private readonly IMatchSyncService _matchSyncService;
     private readonly ISquadSyncService _squadSyncService;
     private readonly ITransferSyncService _transferSyncService;
+    private readonly ITransferStatusResolver _transferStatusReSolver;
+    private readonly ITransferStatusSyncService _transferStatusSyncService;
     private readonly ILogger<ClubRefreshWorkflow> _logger;
 
     public ClubRefreshWorkflow(
@@ -18,6 +22,8 @@ public class ClubRefreshWorkflow
         IMatchSyncService matchSyncService,
         ISquadSyncService squadSyncService,
         ITransferSyncService transferSyncService,
+        ITransferStatusResolver transferStatusResolver,
+        ITransferStatusSyncService transferStatusSyncService,
         ILogger<ClubRefreshWorkflow> logger)
     {
         _teamDataModule = teamDataModule;
@@ -25,6 +31,9 @@ public class ClubRefreshWorkflow
         _matchSyncService = matchSyncService;
         _squadSyncService = squadSyncService;
         _transferSyncService = transferSyncService;
+        _transferStatusReSolver = transferStatusResolver;
+        _transferStatusSyncService = transferStatusSyncService;
+
         _logger = logger;
     }
 
@@ -54,6 +63,16 @@ public class ClubRefreshWorkflow
 
             _logger.LogInformation("STEP 4: Syncing transfer data for team {TeamId}", teamId);
             await _transferSyncService.SyncAsync(snapshot);
+            _logger.LogInformation("STEP 5: Resolving and syncing transfer status for team {TeamId}", teamId);
+            var transfersRawList = snapshot.TeamRaw.Transfers.AllTransfers;
+            var transferCleanList = transfersRawList.ToCleanList();
+            var transferStatuses = _transferStatusReSolver.Resolve(
+                                    transferCleanList,
+                                    DateTime.UtcNow,
+                                    teamId
+            );
+            await _transferStatusSyncService.SyncAsync(transferStatuses, default);
+
             _logger.LogInformation(
                 "Completed club refresh workflow for team {TeamId}",
                 teamId);

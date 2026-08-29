@@ -15,45 +15,45 @@ public class SquadSyncService : ISquadSyncService
         _logger = logger;
     }
 
-   public async Task SyncAsync(
-    TeamDataSnapshot snapshot,
-    CancellationToken cancellationToken = default)
-{
-    var players = ExtractPlayers(snapshot);
-
-    foreach (var player in players)
+    public async Task SyncAsync(
+     TeamDataSnapshot snapshot,
+     CancellationToken cancellationToken = default)
     {
-        cancellationToken.ThrowIfCancellationRequested();
+        var players = ExtractPlayers(snapshot);
 
-        try
+        foreach (var player in players)
         {
-            _logger.LogInformation(
-                "Syncing player {PlayerId} - {PlayerName}",
-                player.PlayerId,
-                player.Name);
+            cancellationToken.ThrowIfCancellationRequested();
 
-            await _playerSyncService.SyncAsync(
-                player.PlayerId,
-                player.TeamId,
-                cancellationToken);
+            try
+            {
+                _logger.LogInformation(
+                    "Syncing player {PlayerId} - {PlayerName}",
+                    player.PlayerId,
+                    player.Name);
 
-            await Task.Delay(
-                TimeSpan.FromSeconds(6),
-                cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "Failed syncing player {PlayerId}",
-                player.PlayerId);
+                await _playerSyncService.SyncAsync(
+                    player.PlayerId,
+                    player.TeamId,
+                    cancellationToken);
+
+                await Task.Delay(
+                    TimeSpan.FromSeconds(6),
+                    cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Failed syncing player {PlayerId}",
+                    player.PlayerId);
+            }
         }
     }
-}
 
     private static List<SquadPlayerRef> ExtractPlayers(
         TeamDataSnapshot snapshot)

@@ -11,7 +11,7 @@ namespace FootballSystem.Shared.Models.Clean
     /// </summary>
     /// 
     [Table("players")]
-    public class PlayerClean :BaseModel
+    public class PlayerClean : BaseModel
     {
         [Column("player_id")]
         public long PlayerId { get; set; }                    // bigint PRIMARY KEY
@@ -30,19 +30,19 @@ namespace FootballSystem.Shared.Models.Clean
         public DateOnly? ContractUntil { get; set; }          // date
         [Column("market_value")]
         public decimal? MarketValue { get; set; }             // numeric(12,2)
-        
+
         [Column("status")]
         public string Status { get; set; } = "Healthy";       // text DEFAULT 'Healthy'
         [Column("injury_description")]
         public string? InjuryDescription { get; set; }       // text, injury line when status is Injured
         [Column("created_at")]
         public DateTime CreatedAt { get; set; }               // timestamptz
-        
+
         [Column("last_updated")]
         public DateTime LastUpdated { get; set; }             // timestamptz
         [Column("preferred_position_code")]
         public string? PreferredPositionCode { get; set; }    // text, foreign key to positions
-
-        
+        [Column("transfer_status")]
+        public string TransferStatus { get; set; } = "current"; // "current" | "loaned" | "transferred"
     }
 }

@@ -45,6 +45,10 @@ public class PlayerSyncService
             var playerClean = playerRaw.ToClean(teamId);
 
             var existingPlayer = await LoadExistingPlayerAsync(playerClean.PlayerId);
+
+            // If the player already exists, update it instead of inserting it.
+            playerClean.TransferStatus = existingPlayer?.TransferStatus ?? playerClean.TransferStatus;
+
             if (existingPlayer != null && IsPlayerPayloadUnchanged(playerClean, existingPlayer))
             {
                 _logger.LogInformation(
@@ -101,6 +105,12 @@ public class PlayerSyncService
             && string.Equals(
                 incoming.PreferredPositionCode,
                 existing.PreferredPositionCode,
-                StringComparison.Ordinal);
+                StringComparison.Ordinal)
+            && string.Equals(
+                incoming.TransferStatus,
+                existing.TransferStatus,
+                StringComparison.Ordinal)
+                ;
+
     }
 }

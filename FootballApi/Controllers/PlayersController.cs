@@ -57,6 +57,7 @@ public class PlayersController : ControllerBase
         [FromQuery] int? teamId,
         [FromQuery] string? positionCode,
         [FromQuery] string? nationality,
+        [FromQuery] string? transferStatus,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
@@ -70,6 +71,7 @@ public class PlayersController : ControllerBase
             TeamId = teamId,
             PositionCode = positionCode,
             Nationality = nationality,
+            TransferStatus = transferStatus,
             Page = page,
             PageSize = pageSize
         };

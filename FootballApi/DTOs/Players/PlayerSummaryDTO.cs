@@ -13,6 +13,7 @@ public class PlayerSummaryDTO
     public string? Status { get; set; }
     public decimal? MarketValue { get; set; }
     public DateOnly? ContractUntil { get; set; }
+    public string? TransferStatus { get; set; }
 }
 
 public class PlayerSearchResult

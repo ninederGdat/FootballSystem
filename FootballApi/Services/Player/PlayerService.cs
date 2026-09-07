@@ -3,6 +3,8 @@ using FootballApi.Repositories.Player;
 using FootballApi.Repositories.Position;
 using FootballApi.Repositories.PositionRole;
 using FootballApi.Repositories.Team;
+using FootballApi.Repositories.Transfer;
+using FootballApi.Services.Transfer;
 using FootballSystem.Shared.Models.Clean;
 
 namespace FootballApi.Services.Player
@@ -23,6 +25,7 @@ namespace FootballApi.Services.Player
         private readonly IPositionRepository _positionRepository;
         private readonly IPositionRoleRepository _positionRoleRepository;
         private readonly ILineupRepository _lineupRepository;
+        private readonly ITransferService _transferService;
         private readonly ILogger<PlayerService> _logger;
 
         public PlayerService(
@@ -31,6 +34,7 @@ namespace FootballApi.Services.Player
             IPositionRepository positionRepository,
             IPositionRoleRepository positionRoleRepository,
             ILineupRepository lineupRepository,
+            ITransferService transferService,
             ILogger<PlayerService> logger)
         {
             _playerRepository = playerRepository;
@@ -38,6 +42,7 @@ namespace FootballApi.Services.Player
             _positionRepository = positionRepository;
             _positionRoleRepository = positionRoleRepository;
             _lineupRepository = lineupRepository;
+            _transferService = transferService;
             _logger = logger;
         }
 
@@ -62,20 +67,26 @@ namespace FootballApi.Services.Player
                 ? _positionRepository.GetByCodesAsync(new List<string> { player.PreferredPositionCode }, ct)
                 : Task.FromResult(new List<PositionClean>());
 
+            var transferTask = _transferService.GetPlayerTransferStatusAsync(player.PlayerId, player.TeamId, ct);
+            if (transferTask is null)
+            {
+                _logger.LogWarning("Player {PlayerId} not found.", id);
+                transferTask = Task.FromResult(new PlayerTransferStatusDTO());
+            }
             // Fire both independent database queries in parallel.
             // This reduces total latency compared to awaiting them sequentially.
-            await Task.WhenAll(teamTask, positionTask);
+            await Task.WhenAll(teamTask, positionTask, transferTask);
 
             var position = positionTask.Result.FirstOrDefault();
-
-            return MapToProfileDto(player, teamTask.Result, position);
+            var status = transferTask.Result;
+            return MapToProfileDto(player, teamTask.Result, position, status);
         }
 
         /// <summary>
         /// Converts domain models into the API response DTO.
         /// No business logic should be added here.
         /// </summary>
-        private static PlayerProfileDTO MapToProfileDto(PlayerClean player, TeamClean? team, PositionClean? position)
+        private static PlayerProfileDTO MapToProfileDto(PlayerClean player, TeamClean? team, PositionClean? position, PlayerTransferStatusDTO? status)
         {
             return new PlayerProfileDTO
             {
@@ -104,6 +115,12 @@ namespace FootballApi.Services.Player
                 {
                     ContractUntil = player.ContractUntil,
                     MarketValue = player.MarketValue
+                },
+                TransferStatus = status is null ? null : new PlayerTransferStatusDTO
+                {
+                    Status = status.Status,
+                    CurrentTeam = status.CurrentTeam,
+                    PeriodEnd = status.PeriodEnd
                 }
             };
         }
@@ -183,15 +200,16 @@ namespace FootballApi.Services.Player
         // ---------------------------------------------------------------
         // Search returns only player data.
         // Team names are resolved separately.
-         public async Task<(IReadOnlyList<PlayerSummaryDTO> Items, int TotalCount)> SearchPlayersAsync(
-            PlayerSearchQuery query, CancellationToken ct)
-            
+        public async Task<(IReadOnlyList<PlayerSummaryDTO> Items, int TotalCount)> SearchPlayersAsync(
+           PlayerSearchQuery query, CancellationToken ct)
+
         {
             var (players, totalCount) = await _playerRepository.SearchAsync(
                 query.Search,
                 query.TeamId,
                 query.PositionCode,
                 query.Nationality,
+                query.TransferStatus,
                 query.Page,
                 query.PageSize,
                 ct);
@@ -239,7 +257,8 @@ namespace FootballApi.Services.Player
                     Status = player.Status,
                     //Format "90.00"
                     MarketValue = player.MarketValue is not null ? Math.Round(player.MarketValue.Value, 2) : null,
-                    ContractUntil = player.ContractUntil
+                    ContractUntil = player.ContractUntil,
+                    TransferStatus = player.TransferStatus
                 };
             }).ToList();
 
@@ -265,5 +284,5 @@ namespace FootballApi.Services.Player
         }
     }
 
-    
+
 }

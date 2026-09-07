@@ -4,9 +4,11 @@ using FootballApi.Repositories.Player;
 using FootballApi.Repositories.Position;
 using FootballApi.Repositories.PositionRole;
 using FootballApi.Repositories.Team;
+using FootballApi.Repositories.Transfer;
 using FootballApi.Services;
 using FootballApi.Services.MatchEvent;
 using FootballApi.Services.Player;
+using FootballApi.Services.Transfer;
 using FootballSystem.Shared.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -50,7 +52,8 @@ builder.Services.AddScoped<IPositionRoleRepository, PositionRoleRepository>();
 builder.Services.AddScoped<ITeamRepository, TeamRepository>();
 builder.Services.AddScoped<IMatchEventRepository, MatchEventRepository>();
 builder.Services.AddScoped<IMatchEventService, MatchEventService>();
-
+builder.Services.AddScoped<ITransferRepository, TransferRepository>();
+builder.Services.AddScoped<ITransferService, TransferService>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();

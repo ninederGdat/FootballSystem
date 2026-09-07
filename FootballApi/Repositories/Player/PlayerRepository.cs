@@ -33,6 +33,7 @@ public class PlayerRepository : IPlayerRepository
         long? teamId,
         string? positionCode,
         string? nationality,
+        string? transferStatus,
         int page,
         int pageSize,
         CancellationToken ct)
@@ -57,17 +58,26 @@ public class PlayerRepository : IPlayerRepository
                 Supabase.Postgrest.Constants.Operator.Equals,
                 nationality);
 
+        if (!string.IsNullOrWhiteSpace(transferStatus))
+            query.Filter(
+                "transfer_status",
+                  Supabase.Postgrest.Constants.Operator.Equals,
+                  transferStatus
+            );
+
         if (!string.IsNullOrWhiteSpace(search))
             query.Filter(
                 "name",
                 Supabase.Postgrest.Constants.Operator.ILike,
                 $"%{search}%");
 
+
+
         var safePage = page < 1 ? 1 : page;
         var safePageSize = pageSize < 1 ? 20 : pageSize;
 
         // Order by shirt number ascending, nulls last (players without a shirt number will appear at the end of the list)
-          query.Order(x => x.ShirtNumber, Supabase.Postgrest.Constants.Ordering.Ascending, Supabase.Postgrest.Constants.NullPosition.Last);
+        query.Order(x => x.ShirtNumber, Supabase.Postgrest.Constants.Ordering.Ascending, Supabase.Postgrest.Constants.NullPosition.Last);
 
         var offset = (safePage - 1) * safePageSize;
         var limit = offset + safePageSize - 1;

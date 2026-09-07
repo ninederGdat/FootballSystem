@@ -11,6 +11,7 @@ public record PlayerProfileDTO
     public PlayerTeamDTO? CurrentTeam { get; init; }
     public PlayerPositionDTO? PreferredPosition { get; init; }
     public PlayerContractDTO Contract { get; init; }
+    public PlayerTransferStatusDTO? TransferStatus { get; init; }
 }
 
 public record PlayerStatusDTO
@@ -35,4 +36,11 @@ public record PlayerContractDTO
 {
     public DateOnly? ContractUntil { get; init; }
     public decimal? MarketValue { get; init; }
+}
+
+public record PlayerTransferStatusDTO
+{
+    public string CurrentTeam { get; init; }
+    public string Status { get; init; }
+    public DateOnly PeriodEnd { get; init; }
 }

@@ -32,7 +32,7 @@ public class TransferClean : BaseModel
     public bool OnLoan { get; set; }
 
     [Column("contract_extension")]
-    public bool? ContractExtension { get; set; }
+    public bool ContractExtension { get; set; }
 
     [Column("fee_value")]
     public decimal? FeeValue { get; set; }

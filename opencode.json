@@ -1,19 +1,75 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "ollama/llama3.2:3b",
+
+  "model": "ollama/qwen2.5-coder:7b-instruct-q2_K",
+
   "provider": {
     "ollama": {
       "npm": "@ai-sdk/openai-compatible",
       "name": "Ollama (local)",
+
       "options": {
         "baseURL": "http://localhost:11434/v1"
       },
+
       "models": {
+        "qwen2.5-coder:7b-instruct-q2_K": {
+          "name": "Qwen2.5-Coder 7B Q2",
+
+          "tool_call": true,
+
+          "options": {
+            "num_ctx": 1536,
+            "temperature": 0.1,
+            "top_p": 0.9,
+            "top_k": 40,
+            "num_predict": 384,
+            "keep_alive": 120
+          }
+        },
+
+        "ibm/granite3.1-moe:3b-instruct-q5_K_M": {
+          "name": "Granite 3.1 MoE 3B Q5",
+
+          "tool_call": true,
+
+          "options": {
+            "num_ctx": 1536,
+            "temperature": 0.1,
+            "top_p": 0.9,
+            "top_k": 40,
+            "num_predict": 384,
+            "keep_alive": 120
+          }
+        },
+
         "llama3.2:3b": {
           "name": "LLaMA 3.2 3B",
+
           "tool_call": true,
+
           "options": {
-            "num_ctx": 2048
+            "num_ctx": 1536,
+            "temperature": 0.2,
+            "top_p": 0.9,
+            "top_k": 40,
+            "num_predict": 384,
+            "keep_alive": 120
+          }
+        },
+
+        "qwen2.5-coder:1.5b-instruct-q3_K_M": {
+          "name": "Qwen2.5-Coder 1.5B Q3",
+
+          "tool_call": false,
+
+          "options": {
+            "num_ctx": 1536,
+            "temperature": 0.1,
+            "top_p": 0.9,
+            "top_k": 40,
+            "num_predict": 128,
+            "keep_alive": 120
           }
         }
       }

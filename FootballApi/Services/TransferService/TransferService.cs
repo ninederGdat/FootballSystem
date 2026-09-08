@@ -1,5 +1,7 @@
 using FootballApi.Common.Exceptions;
 using FootballApi.DTOs.Players;
+using FootballApi.DTOs.Responses;
+using FootballApi.DTOs.Transfers;
 using FootballApi.Repositories.Player;
 using FootballApi.Repositories.Transfer;
 
@@ -69,6 +71,56 @@ namespace FootballApi.Services.Transfer
         }
 
 
+        public async Task<(PagedResponse<TransferResponse> Items, int TotalCount)> SearchTransfersAsync(TransferQuery query, CancellationToken ct)
+        {
+            var (transfers, totalCount) = await _transferRepository.SearchAsync(
+             query.PlayerName ?? string.Empty,
+             query.PlayerId,
+             query.FromClubId,
+             query.ToClubId,
+             query.OnLoan,
+             query.ContractExtension,
+             query.TransferType ?? string.Empty,
+             query.DateFrom,
+             query.DateTo,
+             query.Page,
+             query.PageSize,
+             ct
+            );
+
+            if (transfers.Count == 0)
+            {
+                return (new PagedResponse<TransferResponse>
+                {
+                    Data = Array.Empty<TransferResponse>()
+                }, totalCount);
+            }
+
+            var items = transfers.Select(transfer => new TransferResponse
+            {
+                PlayerId = checked((int)transfer.PlayerId),
+                PlayerName = transfer.PlayerName,
+                FromClubId = checked((int)transfer.FromClubId),
+                FromClubName = transfer.FromClubName,
+                ToClubId = checked((int)transfer.ToClubId),
+                ToClubName = transfer.ToClubName,
+                TransferDate = transfer.TransferDate,
+                FromDate = transfer.PeriodStart,
+                ToDate = transfer.PeriodEnd,
+                TransferType = transfer.TransferType,
+                OnLoan = transfer.OnLoan,
+                ContractExtension = transfer.ContractExtension,
+                Fee = transfer.FeeValue
+            }).ToList();
+
+            return (new PagedResponse<TransferResponse>
+            {
+                Data = items
+            }, totalCount);
+        }
+
+
+
         public static string MaptoStatus(string transferType, long teamId, long toClubId)
         {
 
@@ -84,6 +136,7 @@ namespace FootballApi.Services.Transfer
             $"Unknown transfer type: {transferType}")
             };
         }
+
 
     }
 

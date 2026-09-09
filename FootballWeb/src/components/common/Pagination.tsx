@@ -17,10 +17,10 @@ export function Pagination({
 
   return (
     <div className="flex items-center justify-between border-t border-surface-border pt-3 text-sm">
-      <span className="text-ink-muted">
+      <span className="pl-3 pb-3 text-ink-muted">
         Page {page} of {totalPages} &middot; {totalCount} total
       </span>
-      <div className="flex gap-2">
+      <div className="flex gap-2 pb-3 pr-3">
         <button
           type="button"
           className="rounded-md border border-surface-border px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-40 hover:border-brand-500 hover:text-brand-500"

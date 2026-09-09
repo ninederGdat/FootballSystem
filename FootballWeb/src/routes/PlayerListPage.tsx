@@ -11,6 +11,21 @@ import { formatMarketValue } from "../lib/format";
 
 const PAGE_SIZE = 20;
 
+// Matches TransferService.MaptoStatus output ("current" | "loaned" | "transferred").
+// TODO(backend): PlayerSearchQuery has no transferStatus param yet, so this
+// filter is applied client-side against the current page only.
+type TransferStatusFilter = "all" | "current" | "loaned" | "transferred";
+
+const TRANSFER_FILTER_OPTIONS: {
+  label: string;
+  value: TransferStatusFilter;
+}[] = [
+  { label: "All", value: "all" },
+  { label: "Current", value: "current" },
+  { label: "Loaned", value: "loaned" },
+  { label: "Transferred", value: "transferred" },
+];
+
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/);
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
@@ -26,6 +41,8 @@ export function PlayerListPage() {
   // code input until the backend exposes a category-level filter.
   const [positionCode, setPositionCode] = useState("");
   const [nationality, setNationality] = useState("");
+  const [transferStatus, setTransferStatus] =
+    useState<TransferStatusFilter>("all");
   const [page, setPage] = useState(1);
 
   const { data, isLoading, error } = usePlayerSearch({
@@ -35,6 +52,11 @@ export function PlayerListPage() {
     page,
     pageSize: PAGE_SIZE,
   });
+
+  const items =
+    data && transferStatus !== "all"
+      ? data.items.filter((p) => p.transferStatus === transferStatus)
+      : (data?.items ?? []);
 
   return (
     <div className="mx-auto max-w-[1600px]">
@@ -86,20 +108,47 @@ export function PlayerListPage() {
             }}
             placeholder="e.g. ENG"
           />
+          <div className="flex items-center gap-2 rounded border border-outline-variant bg-surface-container-low p-1">
+            <span className="px-2 font-label-caps uppercase text-outline-variant">
+              TRANSFER
+            </span>
+            <div className="relative">
+              <select
+                value={transferStatus}
+                onChange={(e) =>
+                  setTransferStatus(e.target.value as TransferStatusFilter)
+                }
+                className="cursor-pointer appearance-none border-none bg-transparent py-1 pl-2 pr-8 font-body-sm text-on-surface focus:ring-0"
+              >
+                {TRANSFER_FILTER_OPTIONS.map((opt) => (
+                  <option
+                    key={opt.value}
+                    value={opt.value}
+                    className="bg-surface-container-low text-on-surface"
+                  >
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <span className="material-symbols-outlined pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[16px] text-outline-variant">
+                expand_more
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
       {isLoading && <LoadingState label="Searching players..." />}
       {error && <ErrorState error={error} />}
 
-      {data && data.items.length === 0 && (
+      {data && items.length === 0 && (
         <EmptyState
           title="No players found"
           description="Try a different search or clear the filters."
         />
       )}
 
-      {data && data.items.length > 0 && (
+      {data && items.length > 0 && (
         <div className="flex flex-col overflow-hidden rounded-lg border border-outline-variant bg-surface-container shadow-[0_0_0_1px_rgba(71,85,105,0.1)]">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse whitespace-nowrap text-left">
@@ -117,22 +166,25 @@ export function PlayerListPage() {
                   <th className="w-32 px-4 py-3 font-label-caps uppercase text-on-surface-variant">
                     Nat
                   </th>
-                  <th className="w-24 px-4 py-3 font-label-caps uppercase text-on-surface-variant">
+                  <th className="w-24 px-4 py-3 text-right font-label-caps uppercase text-on-surface-variant">
                     Age
                   </th>
                   <th className="w-32 px-4 py-3 font-label-caps uppercase text-on-surface-variant">
                     Status
                   </th>
-                  <th className="w-32 px-4 py-3 font-label-caps uppercase text-on-surface-variant">
+                  <th className="w-32 px-4 py-3 text-right font-label-caps uppercase text-on-surface-variant">
                     Value
                   </th>
                   <th className="w-32 px-4 py-3 font-label-caps uppercase text-on-surface-variant">
-                    Contact
+                    Transfer
+                  </th>
+                  <th className="w-24 px-4 py-3 text-right font-label-caps uppercase text-on-surface-variant">
+                    Contract
                   </th>
                 </tr>
               </thead>
               <tbody className="font-body-sm">
-                {data.items.map((p) => (
+                {items.map((p) => (
                   <PlayerRow
                     key={p.playerId}
                     player={p}
@@ -181,6 +233,35 @@ function FilterField({
   );
 }
 
+function TransferBadge({
+  status,
+}: {
+  status: PlayerSummaryDTO["transferStatus"];
+}) {
+  if (status === "current") {
+    return (
+      <span className="inline-flex items-center rounded bg-primary/10 border border-primary/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+        Current
+      </span>
+    );
+  }
+  if (status === "loaned") {
+    return (
+      <span className="inline-flex items-center rounded bg-secondary-container/30 border border-outline-variant px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-on-secondary-container">
+        Loaned
+      </span>
+    );
+  }
+  if (status === "transferred") {
+    return (
+      <span className="inline-flex items-center rounded bg-error-container/20 border border-error/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-error">
+        Transferred
+      </span>
+    );
+  }
+  return <span className="text-on-surface-variant">-</span>;
+}
+
 function PlayerRow({
   player,
   onClick,
@@ -211,18 +292,21 @@ function PlayerRow({
       <td className="px-4 py-2 text-on-surface-variant">
         {player.nationality ?? "-"}
       </td>
-      <td className="px-4 py-2 font-data-mono text-on-surface-variant">
+      <td className="px-4 py-2 text-right font-data-mono text-on-surface-variant">
         {player.age != null ? player.age : "-"}
       </td>
       <td className="px-4 py-2 text-on-surface-variant">
         {player.status ?? "-"}
       </td>
-      <td className="px-4 py-2 text-on-surface-variant">
+      <td className="px-4 py-2 text-right text-on-surface-variant">
         {player.marketValue != null
           ? formatMarketValue(player.marketValue)
           : "-"}
       </td>
-      <td className="px-4 py-2 text-on-surface-variant">
+      <td className="px-4 py-2">
+        <TransferBadge status={player.transferStatus} />
+      </td>
+      <td className="px-4 py-2 text-right text-on-surface-variant">
         {player.contractUntil ?? "-"}
       </td>
     </tr>

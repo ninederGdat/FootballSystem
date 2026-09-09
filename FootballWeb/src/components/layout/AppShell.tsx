@@ -3,6 +3,7 @@ import { NavLink, Outlet } from "react-router-dom";
 const navItems = [
   { to: "/", label: "Dashboard", icon: "dashboard" },
   { to: "/players", label: "Players", icon: "groups" },
+  { to: "/transfers", label: "Transfers", icon: "compare_arrows" },
   { to: "/matches", label: "Matches", icon: "sports_soccer" },
 ];
 
@@ -39,22 +40,6 @@ export function AppShell() {
             </NavLink>
           ))}
         </nav>
-
-        <div className="flex items-center gap-3 border-t border-outline-variant px-5 py-4">
-          <img
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuABQNjRL8r36xJNM6U6IftymL9VTfSbcKdbTF61SziL5QSX1qczJgiIAyaMigiAuhdbXy_agWOfa1mCbcPhQBQmQp-7JPkQvp5QBWD49Ek90JvJejcoK2s2bJYDMv6JpptM5nGMWCUknxn-3izI-2b1iPd8Ncj3nbTM2WYqAJJPsjBc439Pt-ozDWNHKo_hLeekkUq7O_9c4GQUmcwL6bIFl-5-CsOWE-44PL4JUW2-F-DpFlV0DQFOuA"
-            alt="Analyst profile"
-            className="h-9 w-9 rounded-full object-cover"
-          />
-          <div className="min-w-0">
-            <div className="truncate font-body-sm text-on-surface">
-              Analyst 01
-            </div>
-            <div className="truncate font-label-caps uppercase text-outline">
-              Data Team
-            </div>
-          </div>
-        </div>
       </aside>
 
       {/* Main column */}

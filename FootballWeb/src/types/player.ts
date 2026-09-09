@@ -67,6 +67,7 @@ export interface PlayerSummaryDTO {
   age: number | null;
   status: string | null;
   marketValue: number | null;
+  transferStatus: string | null;
   contractUntil: string | null; // DateOnly -> "YYYY-MM-DD"
 }
 

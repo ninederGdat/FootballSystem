@@ -1,6 +1,7 @@
 import { Fragment, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMatches } from "../features/matches/hooks";
+import { useCompetitions } from "../features/competitions/hooks";
 import { ApiError } from "../api/client";
 import type {
   MatchSearchQuery,
@@ -9,6 +10,7 @@ import type {
 } from "../types/match";
 
 const PAGE_SIZE = 20;
+const ALL_COMPETITIONS = "All Competitions";
 
 // TODO(backend): MatchSummaryDTO has no field for "our" team's own name/code.
 // Hardcoded here for the single-team (Chelsea, teamId 8455) scope described
@@ -24,15 +26,6 @@ const OUR_TEAM_CODE = "CHE";
 function fallbackCode(name: string): string {
   return name.slice(0, 3).toUpperCase();
 }
-
-// TODO(backend): no /api/competitions endpoint yet to drive this dropdown
-// dynamically. Static list mirrors the mockup; replace once available.
-const COMPETITION_OPTIONS = [
-  "All Competitions",
-  "Premier League",
-  "Champions League",
-  "FA Cup",
-];
 
 // Unlike competition, MatchSearchQuery already has a `Season` field —
 // MatchService.SearchMatchesAsync resolves it server-side via
@@ -138,7 +131,7 @@ export function MatchListPage() {
 
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState<MatchStatus | "all">("all");
-  const [competition, setCompetition] = useState("All Competitions");
+  const [competition, setCompetition] = useState(ALL_COMPETITIONS);
   const [seasonCode, setSeasonCode] = useState("all");
 
   const query: MatchSearchQuery = useMemo(
@@ -153,11 +146,29 @@ export function MatchListPage() {
 
   const { data, isLoading, isError, error, isFetching } = useMatches(query);
 
-  // Competition filter applied client-side against the current page until
-  // MatchSearchQuery grows a `competition` param on the backend.
+  // GET /api/competitions - CompetitionsController. Used to drive the
+  // dropdown for real instead of the old hand-copied static list.
+  const { data: competitionsData, isLoading: competitionsLoading } =
+    useCompetitions();
+
+  const competitionOptions = useMemo(
+    () => [
+      ALL_COMPETITIONS,
+      ...(competitionsData?.data.map((c) => c.name) ?? []),
+    ],
+    [competitionsData],
+  );
+
+  // TODO(backend): MatchesController has no `competition` query param, so
+  // this still filters client-side against whatever page of results came
+  // back — it does not widen the search across the full result set. Once a
+  // competition (or competitionId) param exists on GET /api/matches, move
+  // this into `query` alongside status/season so pagination/totalCount stay
+  // correct. Matching by name (not id) because MatchSummaryDTO only carries
+  // competitionName, not a competitionId.
   const filteredItems = useMemo(() => {
     const items = data?.items ?? [];
-    if (competition === "All Competitions") return items;
+    if (competition === ALL_COMPETITIONS) return items;
     return items.filter((m) => m.competitionName === competition);
   }, [data, competition]);
 
@@ -176,6 +187,11 @@ export function MatchListPage() {
 
   function handleSeasonChange(code: string) {
     setSeasonCode(code);
+    setPage(1);
+  }
+
+  function handleCompetitionChange(name: string) {
+    setCompetition(name);
     setPage(1);
   }
 
@@ -243,11 +259,12 @@ export function MatchListPage() {
               COMPETITION
             </span>
             <select
-              className="bg-transparent border-none text-on-surface focus:ring-0 font-body-sm py-1 pl-2 pr-8 cursor-pointer appearance-none"
+              className="bg-transparent border-none text-on-surface focus:ring-0 font-body-sm py-1 pl-2 pr-8 cursor-pointer appearance-none disabled:opacity-50"
               value={competition}
-              onChange={(e) => setCompetition(e.target.value)}
+              disabled={competitionsLoading}
+              onChange={(e) => handleCompetitionChange(e.target.value)}
             >
-              {COMPETITION_OPTIONS.map((opt) => (
+              {competitionOptions.map((opt) => (
                 <option
                   key={opt}
                   value={opt}

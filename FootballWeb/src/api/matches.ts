@@ -1,11 +1,9 @@
 import { apiGet } from "./client";
-import type { MatchResponse, MatchSearchQuery, MatchSearchResult } from "../types/match";
-
-// NOTE: MatchesController only exposes GET /api/matches/{matchId:long}.
-// There is no list endpoint (no GET /api/matches). The Match List page
-// cannot be built against real data until one exists - see the
-// implementation note surfaced in MatchListPage.tsx and the chat response
-// for the suggested backend addition.
+import type {
+  MatchResponse,
+  MatchSearchQuery,
+  MatchSearchResult,
+} from "../types/match";
 
 export function getMatch(matchId: number, signal?: AbortSignal) {
   return apiGet<MatchResponse>(`/api/matches/${matchId}`, undefined, {
@@ -19,6 +17,11 @@ export function searchMatches(query: MatchSearchQuery, signal?: AbortSignal) {
     {
       fromDate: query.fromDate,
       toDate: query.toDate,
+      // BUGFIX: `season` was defined on MatchSearchQuery and consumed by
+      // MatchesController/MatchService.SearchMatchesAsync via
+      // ISeasonService.Resolve, but was never actually forwarded here - the
+      // season dropdown on MatchListPage was silently a no-op against the API.
+      season: query.season,
       opponent: query.opponent,
       status: query.status,
       page: query.page ?? 1,

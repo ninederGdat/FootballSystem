@@ -68,7 +68,7 @@ export interface MatchResponse {
 }
 
 export type MatchStatus = "UPCOMING" | "live" | "FINISHED" | "cancelled";
- 
+
 export interface MatchSummaryDTO {
   matchId: number;
   opponentName: string;
@@ -80,19 +80,21 @@ export interface MatchSummaryDTO {
   scoreAway: number | null;
   status: MatchStatus;
 }
- 
+
 export interface MatchSearchQuery {
   fromDate?: string; // yyyy-MM-dd
   toDate?: string; // yyyy-MM-dd
+  season?: string;
   opponent?: string;
   status?: MatchStatus;
   page?: number;
   pageSize?: number;
 }
- 
+
 export interface MatchSearchResult {
   items: MatchSummaryDTO[];
   totalCount: number;
+  season: string;
   page: number;
   pageSize: number;
 }

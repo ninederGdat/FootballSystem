@@ -16,6 +16,7 @@ public sealed class TransferQuery
     public bool? OnLoan { get; init; }
     public bool? ContractExtension { get; init; }
     public string? TransferType { get; init; }
+    public string? Season { get; init; }
     public DateTime? DateFrom { get; init; }
     public DateTime? DateTo { get; init; }
 }

@@ -4,6 +4,7 @@ using FootballApi.DTOs.Responses;
 using FootballApi.DTOs.Transfers;
 using FootballApi.Repositories.Player;
 using FootballApi.Repositories.Transfer;
+using FootballApi.Services.Season;
 
 namespace FootballApi.Services.Transfer
 {
@@ -12,16 +13,19 @@ namespace FootballApi.Services.Transfer
         private readonly ITransferRepository _transferRepository;
         private readonly IPlayerRepository _playerRepository;
         private readonly ILogger<TransferService> _logger;
+        private readonly ISeasonService _seasonService;
 
         public TransferService(
                ITransferRepository transferRepository,
                IPlayerRepository playerRepository,
-               ILogger<TransferService> logger
+               ILogger<TransferService> logger,
+               ISeasonService seasonService
            )
         {
             _transferRepository = transferRepository;
             _playerRepository = playerRepository;
             _logger = logger;
+            _seasonService = seasonService;
         }
 
         public async Task<PlayerTransferStatusDTO> GetPlayerTransferStatusAsync(long playerId, long teamId, CancellationToken ct)
@@ -73,6 +77,16 @@ namespace FootballApi.Services.Transfer
 
         public async Task<(PagedResponse<TransferResponse> Items, int TotalCount)> SearchTransfersAsync(TransferQuery query, CancellationToken ct)
         {
+            var fromDate = query.DateFrom;
+            var toDate = query.DateTo;
+
+            if (!string.IsNullOrWhiteSpace(query.Season))
+            {
+                var season = _seasonService.Resolve(query.Season);
+                fromDate = fromDate is null ? season.StartDate : fromDate.Value > season.StartDate ? fromDate.Value : season.StartDate;
+                toDate = toDate is null ? season.EndDate : toDate.Value < season.EndDate ? toDate.Value : season.EndDate;
+            }
+
             var (transfers, totalCount) = await _transferRepository.SearchAsync(
              query.PlayerName ?? string.Empty,
              query.PlayerId,
@@ -81,8 +95,8 @@ namespace FootballApi.Services.Transfer
              query.OnLoan,
              query.ContractExtension,
              query.TransferType ?? string.Empty,
-             query.DateFrom,
-             query.DateTo,
+             fromDate,
+             toDate,
              query.Page,
              query.PageSize,
              ct

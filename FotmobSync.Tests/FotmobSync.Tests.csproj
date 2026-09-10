@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FotmobSync\FotmobSync.csproj" />
+    <ProjectReference Include="..\FootballApi\FootballApi.csproj" />
   </ItemGroup>
 
 </Project>

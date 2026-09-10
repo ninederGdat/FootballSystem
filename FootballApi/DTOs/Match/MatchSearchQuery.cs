@@ -7,6 +7,7 @@ public class MatchSearchQuery
 {
     public DateTime? FromDate { get; set; }
     public DateTime? ToDate { get; set; }
+    public string? Season { get; set; }
     public string? Opponent { get; set; }
 
     /// <summary><c>UPCOMING</c>, <c>ONGOING</c>, hoặc <c>FINISHED</c>.</summary>

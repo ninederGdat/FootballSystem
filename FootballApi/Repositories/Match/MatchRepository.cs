@@ -65,7 +65,7 @@ public class MatchRepository : IMatchRepository
             query.Filter(
                 "match_date",
                 Constants.Operator.GreaterThanOrEqual,
-                fromDate.Value.ToString("0")
+                fromDate.Value.ToString("yyyy-MM-dd")
             );
         }
 
@@ -73,8 +73,8 @@ public class MatchRepository : IMatchRepository
         {
             query.Filter(
                 "match_date",
-                Constants.Operator.LessThanOrEqual,
-                toDate.Value.ToString("0")
+                Constants.Operator.LessThan,
+                toDate.Value.ToString("yyyy-MM-dd")
             );
         }
 
@@ -92,7 +92,7 @@ public class MatchRepository : IMatchRepository
                 status);
 
         // Most recent/soonest matches first — matches the fan-facing "what's happening" use case.
-        query.Order("match_date", Constants.Ordering.Descending);
+        query.Order("match_date", Constants.Ordering.Ascending);
 
         // Clamp to sane values so a bad/zero pageSize can't blow up Range() or return everything.
         var safePage = page < 1 ? 1 : page;

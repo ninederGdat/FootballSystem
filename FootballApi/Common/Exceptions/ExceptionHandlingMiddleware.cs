@@ -19,6 +19,11 @@ public class ExceptionHandlingMiddleware
         {
             await _next(context);
         }
+        catch (BadRequestException ex)
+        {
+            _logger.LogWarning(ex, "Bad request");
+            await WriteProblem(context, StatusCodes.Status400BadRequest, ex.Message);
+        }
         catch (NotFoundException ex)
         {
             _logger.LogWarning(ex, "Resource not found");
@@ -38,7 +43,12 @@ public class ExceptionHandlingMiddleware
         var problem = new ProblemDetails
         {
             Status = statusCode,
-            Title = statusCode == 404 ? "Not Found" : "Internal Server Error",
+            Title = statusCode switch
+            {
+                400 => "Bad Request",
+                404 => "Not Found",
+                _ => "Internal Server Error"
+            },
             Detail = detail
         };
         await context.Response.WriteAsJsonAsync(problem);

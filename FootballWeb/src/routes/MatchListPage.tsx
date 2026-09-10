@@ -1,8 +1,12 @@
 import { Fragment, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMatches } from "../features/matches/hooks"; 
+import { useMatches } from "../features/matches/hooks";
 import { ApiError } from "../api/client";
-import type { MatchSearchQuery, MatchStatus, MatchSummaryDTO } from "../types/match";
+import type {
+  MatchSearchQuery,
+  MatchStatus,
+  MatchSummaryDTO,
+} from "../types/match";
 
 const PAGE_SIZE = 20;
 
@@ -23,7 +27,34 @@ function fallbackCode(name: string): string {
 
 // TODO(backend): no /api/competitions endpoint yet to drive this dropdown
 // dynamically. Static list mirrors the mockup; replace once available.
-const COMPETITION_OPTIONS = ["All Competitions", "Premier League", "Champions League", "FA Cup"];
+const COMPETITION_OPTIONS = [
+  "All Competitions",
+  "Premier League",
+  "Champions League",
+  "FA Cup",
+];
+
+// Unlike competition, MatchSearchQuery already has a `Season` field —
+// MatchService.SearchMatchesAsync resolves it server-side via
+// ISeasonService.Resolve into a fromDate/toDate range. So this filter is
+// sent straight through to the API as the season Code — no client-side
+// date derivation needed.
+//
+// TODO(backend): mirrors appsettings.json's Seasons config (Code/Name pairs).
+// There's no /api/seasons endpoint yet, so this list is hand-copied and will
+// drift if the backend config changes. Only 2025-26 and 2026-27 are
+// configured server-side right now — don't add more without checking
+// appsettings.json first.
+interface SeasonOption {
+  code: string;
+  label: string;
+}
+
+const SEASON_OPTIONS: SeasonOption[] = [
+  { code: "all", label: "All Seasons" },
+  { code: "2025-26", label: "2025/26" },
+  { code: "2026-27", label: "2026/27" },
+];
 
 const STATUS_TABS: { label: string; value: MatchStatus | "all" }[] = [
   { label: "All", value: "all" },
@@ -33,15 +64,24 @@ const STATUS_TABS: { label: string; value: MatchStatus | "all" }[] = [
 
 function monthGroupKey(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { month: "long", year: "numeric" }).toUpperCase();
+  return d
+    .toLocaleDateString(undefined, { month: "long", year: "numeric" })
+    .toUpperCase();
 }
 
 function formatShortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 function formatKickoffTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false });
+  return new Date(iso).toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 }
 
 function statusBadge(status: MatchStatus): { label: string; dotClass: string } {
@@ -99,14 +139,16 @@ export function MatchListPage() {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState<MatchStatus | "all">("all");
   const [competition, setCompetition] = useState("All Competitions");
+  const [seasonCode, setSeasonCode] = useState("all");
 
   const query: MatchSearchQuery = useMemo(
     () => ({
       page,
       pageSize: PAGE_SIZE,
       status: status === "all" ? undefined : status,
+      season: seasonCode === "all" ? undefined : seasonCode,
     }),
-    [page, status],
+    [page, status, seasonCode],
   );
 
   const { data, isLoading, isError, error, isFetching } = useMatches(query);
@@ -119,7 +161,10 @@ export function MatchListPage() {
     return items.filter((m) => m.competitionName === competition);
   }, [data, competition]);
 
-  const monthGroups = useMemo(() => groupByMonth(filteredItems), [filteredItems]);
+  const monthGroups = useMemo(
+    () => groupByMonth(filteredItems),
+    [filteredItems],
+  );
 
   const totalCount = data?.totalCount ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -129,15 +174,28 @@ export function MatchListPage() {
     setPage(1);
   }
 
+  function handleSeasonChange(code: string) {
+    setSeasonCode(code);
+    setPage(1);
+  }
+
   const errorMessage =
-    error instanceof ApiError ? error.message : error instanceof Error ? error.message : null;
+    error instanceof ApiError
+      ? error.message
+      : error instanceof Error
+        ? error.message
+        : null;
 
   return (
     <div className="p-container-padding max-w-[1600px] mx-auto">
       {/* Page Header */}
       <div className="mb-gutter">
-        <h2 className="font-display-lg text-display-lg text-on-surface mb-2">Matches</h2>
-        <p className="font-body-md text-body-md text-on-surface-variant">Results and upcoming fixtures</p>
+        <h2 className="font-display-lg text-display-lg text-on-surface mb-2">
+          Matches
+        </h2>
+        <p className="font-body-md text-body-md text-on-surface-variant">
+          Results and upcoming fixtures
+        </p>
       </div>
 
       {/* Toolbar: status tabs + competition filter */}
@@ -158,19 +216,48 @@ export function MatchListPage() {
           ))}
         </div>
 
-        <div className="flex items-center gap-2 border border-outline-variant rounded-DEFAULT bg-surface-container-low p-1">
-          <span className="text-outline-variant font-label-caps text-label-caps px-2">COMPETITION</span>
-          <select
-            className="bg-transparent border-none text-on-surface focus:ring-0 font-body-sm py-1 pl-2 pr-8 cursor-pointer appearance-none"
-            value={competition}
-            onChange={(e) => setCompetition(e.target.value)}
-          >
-            {COMPETITION_OPTIONS.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
+        <div className="flex items-center gap-gutter">
+          <div className="flex items-center gap-2 border border-outline-variant rounded-DEFAULT bg-surface-container-low p-1">
+            <span className="text-outline-variant font-label-caps text-label-caps px-2">
+              SEASON
+            </span>
+            <select
+              className="bg-transparent border-none text-on-surface focus:ring-0 font-body-sm py-1 pl-2 pr-8 cursor-pointer appearance-none"
+              value={seasonCode}
+              onChange={(e) => handleSeasonChange(e.target.value)}
+            >
+              {SEASON_OPTIONS.map((opt) => (
+                <option
+                  key={opt.code}
+                  value={opt.code}
+                  className="bg-surface-container-low text-on-surface"
+                >
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2 border border-outline-variant rounded-DEFAULT bg-surface-container-low p-1">
+            <span className="text-outline-variant font-label-caps text-label-caps px-2">
+              COMPETITION
+            </span>
+            <select
+              className="bg-transparent border-none text-on-surface focus:ring-0 font-body-sm py-1 pl-2 pr-8 cursor-pointer appearance-none"
+              value={competition}
+              onChange={(e) => setCompetition(e.target.value)}
+            >
+              {COMPETITION_OPTIONS.map((opt) => (
+                <option
+                  key={opt}
+                  value={opt}
+                  className="bg-surface-container-low text-on-surface"
+                >
+                  {opt}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -180,18 +267,33 @@ export function MatchListPage() {
           <table className="w-full text-left border-collapse whitespace-nowrap">
             <thead>
               <tr className="bg-surface-container-high border-b border-outline-variant">
-                <th className="font-label-caps text-label-caps text-on-surface-variant py-3 px-4 w-24">DATE</th>
-                <th className="font-label-caps text-label-caps text-on-surface-variant py-3 px-4 w-40">COMPETITION</th>
-                <th className="font-label-caps text-label-caps text-on-surface-variant py-3 px-4 text-right">HOME</th>
-                <th className="font-label-caps text-label-caps text-on-surface-variant py-3 px-4 w-28 text-center">SCORE</th>
-                <th className="font-label-caps text-label-caps text-on-surface-variant py-3 px-4">AWAY</th>
-                <th className="font-label-caps text-label-caps text-on-surface-variant py-3 px-4 w-28">STATUS</th>
+                <th className="font-label-caps text-label-caps text-on-surface-variant py-3 px-4 w-24">
+                  DATE
+                </th>
+                <th className="font-label-caps text-label-caps text-on-surface-variant py-3 px-4 w-40">
+                  COMPETITION
+                </th>
+                <th className="font-label-caps text-label-caps text-on-surface-variant py-3 px-4 text-right">
+                  HOME
+                </th>
+                <th className="font-label-caps text-label-caps text-on-surface-variant py-3 px-4 w-28 text-center">
+                  SCORE
+                </th>
+                <th className="font-label-caps text-label-caps text-on-surface-variant py-3 px-4">
+                  AWAY
+                </th>
+                <th className="font-label-caps text-label-caps text-on-surface-variant py-3 px-4 w-28">
+                  STATUS
+                </th>
               </tr>
             </thead>
             <tbody className="font-body-sm">
               {isLoading && (
                 <tr>
-                  <td colSpan={6} className="py-8 px-4 text-center text-on-surface-variant">
+                  <td
+                    colSpan={6}
+                    className="py-8 px-4 text-center text-on-surface-variant"
+                  >
                     Loading matches...
                   </td>
                 </tr>
@@ -200,14 +302,18 @@ export function MatchListPage() {
               {isError && (
                 <tr>
                   <td colSpan={6} className="py-8 px-4 text-center text-error">
-                    Failed to load matches{errorMessage ? `: ${errorMessage}` : ""}
+                    Failed to load matches
+                    {errorMessage ? `: ${errorMessage}` : ""}
                   </td>
                 </tr>
               )}
 
               {!isLoading && !isError && filteredItems.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-8 px-4 text-center text-on-surface-variant">
+                  <td
+                    colSpan={6}
+                    className="py-8 px-4 text-center text-on-surface-variant"
+                  >
                     No matches found for the selected filters.
                   </td>
                 </tr>
@@ -229,7 +335,9 @@ export function MatchListPage() {
                       const row = toRow(match);
                       const badge = statusBadge(match.status);
                       const scoreText =
-                        match.status === "UPCOMING" || match.scoreHome === null || match.scoreAway === null
+                        match.status === "UPCOMING" ||
+                        match.scoreHome === null ||
+                        match.scoreAway === null
                           ? formatKickoffTime(match.matchDate)
                           : `${match.scoreHome} — ${match.scoreAway}`;
 
@@ -243,10 +351,14 @@ export function MatchListPage() {
                             <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
                             {formatShortDate(match.matchDate)}
                           </td>
-                          <td className="py-2 px-4 text-on-surface-variant">{match.competitionName}</td>
+                          <td className="py-2 px-4 text-on-surface-variant">
+                            {match.competitionName}
+                          </td>
                           <td className="py-2 px-4 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <span className="text-on-surface font-semibold">{row.homeName}</span>
+                              <span className="text-on-surface font-semibold">
+                                {row.homeName}
+                              </span>
                               <span className="w-6 h-6 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center font-data-mono text-[10px] text-on-surface-variant">
                                 {row.homeCode}
                               </span>
@@ -260,12 +372,16 @@ export function MatchListPage() {
                               <span className="w-6 h-6 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center font-data-mono text-[10px] text-on-surface-variant">
                                 {row.awayCode}
                               </span>
-                              <span className="text-on-surface font-semibold">{row.awayName}</span>
+                              <span className="text-on-surface font-semibold">
+                                {row.awayName}
+                              </span>
                             </div>
                           </td>
                           <td className="py-2 px-4">
                             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-container-high border border-outline-variant text-[10px] font-bold text-on-surface uppercase tracking-wider">
-                              <span className={`w-1.5 h-1.5 rounded-full ${badge.dotClass}`} />
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${badge.dotClass}`}
+                              />
                               {badge.label}
                             </span>
                           </td>
@@ -281,7 +397,9 @@ export function MatchListPage() {
         {/* Pagination */}
         <div className="bg-surface-container-high border-t border-outline-variant p-3 flex items-center justify-between">
           <span className="font-body-sm text-body-sm text-on-surface-variant">
-            {totalCount === 0 ? "No matches" : `Showing ${filteredItems.length} of ${totalCount} matches`}
+            {totalCount === 0
+              ? "No matches"
+              : `Showing ${filteredItems.length} of ${totalCount} matches`}
             {isFetching && !isLoading ? " · refreshing..." : ""}
           </span>
           <div className="flex items-center gap-1">

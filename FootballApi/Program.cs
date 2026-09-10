@@ -1,3 +1,5 @@
+using FootballApi.Configuration;
+using FootballApi.Repositories.Competition;
 using FootballApi.Repositories.Match;
 using FootballApi.Repositories.MatchEvent;
 using FootballApi.Repositories.Player;
@@ -6,10 +8,13 @@ using FootballApi.Repositories.PositionRole;
 using FootballApi.Repositories.Team;
 using FootballApi.Repositories.Transfer;
 using FootballApi.Services;
+using FootballApi.Services.Competition;
 using FootballApi.Services.MatchEvent;
 using FootballApi.Services.Player;
+using FootballApi.Services.Season;
 using FootballApi.Services.Transfer;
 using FootballSystem.Shared.Infrastructure;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,6 +23,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddOptions<SeasonOptions>()
+    .BindConfiguration(SeasonOptions.SectionName)
+    .ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<SeasonOptions>, SeasonOptionsValidator>();
 
 
 // --- Frontend CORS policy -------------------------------------------------
@@ -43,6 +53,9 @@ builder.Services.AddSingleton<SupabaseClientFactory>();
 
 builder.Services.AddScoped<IMatchRepository, MatchRepository>();
 builder.Services.AddScoped<IMatchService, MatchService>();
+builder.Services.AddScoped<ICompetitionRepository, CompetitionRepository>();
+builder.Services.AddScoped<ICompetitionService, CompetitionService>();
+builder.Services.AddScoped<ISeasonService, SeasonService>();
 builder.Services.AddScoped<ILineupRepository, LineupRepository>();
 builder.Services.AddScoped<ILineupService, LineupService>();
 builder.Services.AddScoped<IPlayerRepository, PlayerRepository>();
@@ -54,7 +67,7 @@ builder.Services.AddScoped<IMatchEventRepository, MatchEventRepository>();
 builder.Services.AddScoped<IMatchEventService, MatchEventService>();
 builder.Services.AddScoped<ITransferRepository, TransferRepository>();
 builder.Services.AddScoped<ITransferService, TransferService>();
-
+builder.Services.AddScoped<ISeasonService, SeasonService>();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 

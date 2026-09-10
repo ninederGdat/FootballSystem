@@ -46,10 +46,10 @@ public class TransferRepository : ITransferRepository
                 q.Filter("transfer_type", Supabase.Postgrest.Constants.Operator.Equals, transferType);
 
             if (dateFrom is not null)
-                q.Filter("period_start", Supabase.Postgrest.Constants.Operator.GreaterThanOrEqual, dateFrom.Value.ToString("yyyy-MM-dd"));
+                q.Filter("transfer_date", Supabase.Postgrest.Constants.Operator.GreaterThanOrEqual, dateFrom.Value.ToString("yyyy-MM-dd"));
 
             if (dateTo is not null)
-                q.Filter("period_end", Supabase.Postgrest.Constants.Operator.LessThanOrEqual, dateTo.Value.ToString("yyyy-MM-dd"));
+                q.Filter("transfer_date", Supabase.Postgrest.Constants.Operator.LessThan, dateTo.Value.ToString("yyyy-MM-dd"));
         }
 
         var countQuery = _client.From<TransferClean>();

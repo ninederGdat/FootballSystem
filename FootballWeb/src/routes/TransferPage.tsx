@@ -30,6 +30,44 @@ const TYPE_FILTER_OPTIONS: {
   { label: "Loan", value: "on_loan" },
 ];
 
+// TODO(backend): TransferQuery has no Season string param (unlike
+// MatchSearchQuery, which resolves "Season" via ISeasonService server-side).
+// Only dateFrom/dateTo exist, so seasons are mapped to date ranges here and
+// sent as dateFrom/dateTo. If a seasons lookup / ISeasonService equivalent
+// becomes available for transfers, replace this with a real season param.
+//
+// Mirrors appsettings.json's Seasons config (Code/Name/StartDate/EndDate).
+// Note the boundary is Aug 1 -> Aug 1, not the Jul 1 -> Jun 30 convention
+// used elsewhere — copy from appsettings.json, don't assume. Only 2025-26
+// and 2026-27 are configured server-side right now.
+//
+// TransferRepository.SearchAsync filters period_start >= dateFrom and
+// period_end <= dateTo (both inclusive), unlike MatchRepository's exclusive
+// toDate — using each season's EndDate as-is matches config values directly,
+// which is an acceptable one-day overlap at the season boundary.
+interface SeasonOption {
+  code: string;
+  label: string;
+  dateFrom: string;
+  dateTo: string;
+}
+
+const SEASON_OPTIONS: SeasonOption[] = [
+  { code: "all", label: "All Seasons", dateFrom: "", dateTo: "" },
+  {
+    code: "2025-26",
+    label: "2025/26",
+    dateFrom: "2025-08-01",
+    dateTo: "2026-08-01",
+  },
+  {
+    code: "2026-27",
+    label: "2026/27",
+    dateFrom: "2026-08-01",
+    dateTo: "2027-08-01",
+  },
+];
+
 function getDirection(transfer: TransferApiItem): TransferDirection {
   return transfer.toClubId === CHELSEA_TEAM_ID ? "in" : "out";
 }
@@ -120,15 +158,22 @@ export default function TransferPage() {
   const [transferType, setTransferType] = useState<
     "all" | "contract" | "on_loan"
   >("all");
+  const [season, setSeason] = useState(SEASON_OPTIONS[0].code);
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
+  const selectedSeason =
+    SEASON_OPTIONS.find((s) => s.code === season) ?? SEASON_OPTIONS[0];
+
   // Direction has no backend param (derived client-side from toClubId), so it
   // isn't sent to the API. transferType maps directly to TransferQuery.TransferType.
-  const { data, isLoading, isError, error, refetch } = useTransfers({
+  // Season maps to dateFrom/dateTo (see SEASON_OPTIONS TODO above).
+  const { data, isLoading, isError, refetch } = useTransfers({
     page,
     pageSize,
     transferType: transferType === "all" ? undefined : transferType,
+    dateFrom: selectedSeason.dateFrom || undefined,
+    dateTo: selectedSeason.dateTo || undefined,
   });
 
   const filtered = useMemo(() => {
@@ -140,7 +185,7 @@ export default function TransferPage() {
   const pagination = data?.pagination;
 
   return (
-    <main className="mt-[5px] pd-[5px] flex-1 overflow-y-auto p-container-padding">
+    <main className="mt-[44px] flex-1 overflow-y-auto p-container-padding">
       {/* Page Header */}
       <div className="mb-8 flex justify-between items-end">
         <div>
@@ -180,19 +225,44 @@ export default function TransferPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* TODO(backend): TransferQuery has no season param, only dateFrom/dateTo.
-             Dropped the season select until there's a seasons lookup or we
-             decide to map "season" to a dateFrom/dateTo range client-side. */}
+          <div className="relative">
+            <select
+              value={season}
+              onChange={(e) => {
+                setSeason(e.target.value);
+                setPage(1);
+              }}
+              className="appearance-none bg-surface-container-low border border-outline-variant rounded pl-3 pr-8 py-1.5 text-body-sm font-body-sm text-on-surface focus:outline-none focus:border-primary transition-colors cursor-pointer"
+            >
+              {SEASON_OPTIONS.map((opt) => (
+                <option
+                  key={opt.code}
+                  value={opt.code}
+                  className="bg-surface-container-low text-on-surface"
+                >
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-outline pointer-events-none text-[16px]">
+              expand_more
+            </span>
+          </div>
           <div className="relative">
             <select
               value={transferType}
-              onChange={(e) =>
-                setTransferType(e.target.value as typeof transferType)
-              }
+              onChange={(e) => {
+                setTransferType(e.target.value as typeof transferType);
+                setPage(1);
+              }}
               className="appearance-none bg-surface-container-low border border-outline-variant rounded pl-3 pr-8 py-1.5 text-body-sm font-body-sm text-on-surface focus:outline-none focus:border-primary transition-colors cursor-pointer"
             >
               {TYPE_FILTER_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
+                <option
+                  key={opt.value}
+                  value={opt.value}
+                  className="bg-surface-container-low text-on-surface"
+                >
                   {opt.label}
                 </option>
               ))}
@@ -209,7 +279,7 @@ export default function TransferPage() {
         {isLoading ? (
           <LoadingState />
         ) : isError ? (
-          <ErrorState error={error ?? "Failed to load transfers."} />
+          <ErrorState error={isError ?? "Failed to load transfers."} />
         ) : filtered.length === 0 ? (
           <EmptyState
             title="No transfers found"

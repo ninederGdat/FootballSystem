@@ -32,27 +32,29 @@ public class MatchesController : ControllerBase
     public async Task<ActionResult<MatchListResult>> SearchMatches(
         [FromQuery] DateTime? fromDate,
         [FromQuery] DateTime? toDate,
+        [FromQuery] string? season,
         [FromQuery] string? opponent,
         [FromQuery] string? status,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int pageSize = 5,
         CancellationToken ct = default)
     {
         if (page < 1) page = 1;
-        if (pageSize is < 1 or > 100) pageSize = 20;
- 
+        if (pageSize is < 1 or > 100) pageSize = 5;
+
         var query = new MatchSearchQuery
         {
             FromDate = fromDate,
             ToDate = toDate,
+            Season = season,
             Opponent = opponent,
             Status = status,
             Page = page,
             PageSize = pageSize
         };
- 
+
         var (items, totalCount) = await _matchService.SearchMatchesAsync(query, ct);
- 
+
         return Ok(new MatchListResult
         {
             Page = page,

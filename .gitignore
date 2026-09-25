@@ -9,3 +9,9 @@
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Local secrets — never commit real tokens
+appsettings.Development.json
+appsettings.*.local.json
+*.env
+.env

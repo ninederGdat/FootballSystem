@@ -2,7 +2,7 @@ name: Fotmob Daily Sync
 
 on:
   schedule:
-    - cron: "0 23 * * *"
+    - cron: "0 23 * * 1" # Thứ Hai 23:00 UTC = Thứ Ba 06:00 sáng giờ VN
   workflow_dispatch:
 
 jobs:

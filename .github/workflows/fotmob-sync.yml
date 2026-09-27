@@ -1,0 +1,40 @@
+name: Fotmob Daily Sync
+
+on:
+  schedule:
+    - cron: "0 23 * * *"
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore FotmobSync/FotmobSync.csproj
+
+      - name: Build
+        run: dotnet build FotmobSync/FotmobSync.csproj --no-restore --configuration Release
+
+      - name: Install Playwright CLI
+        run: dotnet tool install --global Microsoft.Playwright.CLI --version 1.59.0
+
+      - name: Install Playwright browsers
+        run: playwright install --with-deps chromium
+
+      - name: Run FotmobSync (one-shot)
+        run: dotnet run --project FotmobSync --no-build --configuration Release -- --run-once
+        env:
+          FOTMOB__XMAS_TOKEN: ${{ secrets.FOTMOB_XMAS_TOKEN }}
+          SUPABASE__URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE__ANONKEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE__SERVICEROLEKEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

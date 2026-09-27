@@ -25,11 +25,8 @@ jobs:
       - name: Build
         run: dotnet build FotmobSync/FotmobSync.csproj --no-restore --configuration Release
 
-      - name: Install Playwright CLI
-        run: dotnet tool install --global Microsoft.Playwright.CLI --version 1.59.0
-
       - name: Install Playwright browsers
-        run: playwright install --with-deps chromium
+        run: pwsh FotmobSync/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
 
       - name: Run FotmobSync (one-shot)
         run: dotnet run --project FotmobSync --no-build --configuration Release -- --run-once

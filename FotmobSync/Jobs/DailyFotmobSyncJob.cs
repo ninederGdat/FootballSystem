@@ -1,44 +1,44 @@
 ﻿using FotmobSync.Services;
-using FotmobSync.Workflows;
 using Quartz;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
-namespace FotmobSync.Jobs
+namespace FotmobSync.Jobs;
+
+[DisallowConcurrentExecution]
+public class DailyFotmobSyncJob : IJob
 {
-    [DisallowConcurrentExecution]
-    public class DailyFotmobSyncJob : IJob
+    private readonly IFotmobSyncRunner _syncRunner;
+    private readonly ILogger<DailyFotmobSyncJob> _logger;
+
+    public DailyFotmobSyncJob(
+        IFotmobSyncRunner syncRunner,
+        ILogger<DailyFotmobSyncJob> logger)
     {
-        private readonly ClubRefreshWorkflow _workflow;
-        private readonly ILogger<DailyFotmobSyncJob> _logger;
+        _syncRunner = syncRunner;
+        _logger = logger;
+    }
 
-        public DailyFotmobSyncJob(ClubRefreshWorkflow workflow,
-                                ILogger<DailyFotmobSyncJob> logger)
+    public async Task Execute(IJobExecutionContext context)
+    {
+        _logger.LogInformation(
+            "Starting Daily Fotmob Sync Job at {Time}",
+            DateTimeOffset.Now);
+
+        try
         {
-            _workflow = workflow;
-            _logger = logger;
+            await _syncRunner.RunAsync(context.CancellationToken);
+
+            _logger.LogInformation(
+                "Completed Daily Fotmob Sync Job at {Time}",
+                DateTimeOffset.Now);
         }
-
-        public async Task Execute(IJobExecutionContext context)
+        catch (Exception ex)
         {
-            _logger.LogInformation("Starting Daily Fotmob Sync Job at {Time}", DateTimeOffset.Now);
-            try
-            {
-                // Example: Sync team with ID 8455, 8455 = Chelsea FC
-                var teamsToSync = new List<int> { 8455 };
+            _logger.LogError(
+                ex,
+                "Daily Fotmob Sync Job failed at {Time}",
+                DateTimeOffset.Now);
 
-                foreach (var teamId in teamsToSync)
-                {
-                    _logger.LogInformation("Syncing team with ID {TeamId}", teamId);
-                    await _workflow.ExecuteAsync(teamId);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error occurred during Daily Fotmob Sync Job");
-            }
-            _logger.LogInformation("Completed Daily Fotmob Sync Job at {Time}", DateTimeOffset.Now);
+            throw;
         }
     }
 }

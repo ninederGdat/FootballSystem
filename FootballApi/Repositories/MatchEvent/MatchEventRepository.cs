@@ -8,7 +8,7 @@ public class MatchEventRepository : IMatchEventRepository
 
     public MatchEventRepository(SupabaseClientFactory factory)
     {
-        _client = factory.CreateServiceRoleClient();
+        _client = factory.CreateAnonClient();
     }
 
     public async Task<List<MatchEventClean>> GetEventsByMatchIdAsync(long matchId, CancellationToken ct = default)

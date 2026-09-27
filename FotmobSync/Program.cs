@@ -70,6 +70,10 @@ var quartzOptions = builder.Configuration
     .GetSection(QuartzSyncOptions.SectionName)
     .Get<QuartzSyncOptions>() ?? new QuartzSyncOptions();
 
+var fotmobOptions = builder.Configuration
+    .GetSection(FotmobOptions.SectionName)
+    .Get<FotmobOptions>() ?? new FotmobOptions();
+
 if (!runOnce)
 {
     builder.Services.AddQuartz(q =>
@@ -105,9 +109,6 @@ if (!runOnce)
 var host = builder.Build();
 
 var fotmobClient = host.Services.GetRequiredService<FotmobClient>();
-
-var fotmobOptions = host.Services
-    .GetRequiredService<FotmobOptions>();
 
 var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("FotmobSync");
 logger.LogInformation(

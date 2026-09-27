@@ -8,7 +8,7 @@ public class TeamRepository : ITeamRepository
 {
     private readonly Supabase.Client _client;
 
-    public TeamRepository(SupabaseClientFactory factory) => _client = factory.CreateServiceRoleClient();
+    public TeamRepository(SupabaseClientFactory factory) => _client = factory.CreateAnonClient();
 
     public async Task<TeamClean?> GetByIdAsync(long teamId, CancellationToken ct = default)
     {

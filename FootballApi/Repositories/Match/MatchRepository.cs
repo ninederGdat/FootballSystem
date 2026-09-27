@@ -12,7 +12,7 @@ public class MatchRepository : IMatchRepository
 
     public MatchRepository(SupabaseClientFactory factory, ILogger<MatchRepository> logger)
     {
-        _client = factory.CreateServiceRoleClient();
+        _client = factory.CreateAnonClient();
         _logger = logger;
     }
 

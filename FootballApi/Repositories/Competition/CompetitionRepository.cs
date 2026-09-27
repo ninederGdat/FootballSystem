@@ -9,7 +9,7 @@ public class CompetitionRepository : ICompetitionRepository
 
     public CompetitionRepository(SupabaseClientFactory factory)
     {
-        _client = factory.CreateServiceRoleClient();
+        _client = factory.CreateAnonClient();
     }
 
     public async Task<IReadOnlyList<CompetitionClean>> GetAllAsync(CancellationToken ct = default)

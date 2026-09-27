@@ -7,7 +7,7 @@ public class PlayerRepository : IPlayerRepository
 {
     private readonly Supabase.Client _client;
 
-    public PlayerRepository(SupabaseClientFactory factory) => _client = factory.CreateServiceRoleClient();
+    public PlayerRepository(SupabaseClientFactory factory) => _client = factory.CreateAnonClient();
 
     public async Task<PlayerClean?> GetByIdAsync(long playerId, CancellationToken ct)
     {

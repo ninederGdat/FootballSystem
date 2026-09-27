@@ -8,7 +8,7 @@ public class PositionRoleRepository : IPositionRoleRepository
 {
     private readonly Supabase.Client _client;
 
-    public PositionRoleRepository(SupabaseClientFactory factory) => _client = factory.CreateServiceRoleClient();
+    public PositionRoleRepository(SupabaseClientFactory factory) => _client = factory.CreateAnonClient();
 
     public async Task<List<PositionRoleClean>> GetAllAsync(CancellationToken ct = default)
     {

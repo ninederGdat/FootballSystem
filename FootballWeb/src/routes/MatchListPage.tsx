@@ -12,17 +12,9 @@ import type {
 const PAGE_SIZE = 20;
 const ALL_COMPETITIONS = "All Competitions";
 
-// TODO(backend): MatchSummaryDTO has no field for "our" team's own name/code.
-// Hardcoded here for the single-team (Chelsea, teamId 8455) scope described
-// in business_logic.md. If the system ever tracks more than one team this
-// needs to come from config/API instead.
 const OUR_TEAM_NAME = "Chelsea";
 const OUR_TEAM_CODE = "CHE";
 
-// TODO(backend): MatchSummaryDTO has no `opponentCode` (3-letter club code,
-// e.g. "MUN" for Manchester United). Slicing the name is a placeholder and
-// will be wrong for many clubs — ask backend to add opponentCode to the DTO
-// (Fotmob raw data already carries it) instead of deriving it client-side.
 function fallbackCode(name: string): string {
   return name.slice(0, 3).toUpperCase();
 }
@@ -32,11 +24,7 @@ function fallbackCode(name: string): string {
 // ISeasonService.Resolve into a fromDate/toDate range. So this filter is
 // sent straight through to the API as the season Code — no client-side
 // date derivation needed.
-//
-// TODO(backend): mirrors appsettings.json's Seasons config (Code/Name pairs).
-// There's no /api/seasons endpoint yet, so this list is hand-copied and will
-// drift if the backend config changes. Only 2025-26 and 2026-27 are
-// configured server-side right now — don't add more without checking
+
 // appsettings.json first.
 interface SeasonOption {
   code: string;
@@ -159,13 +147,6 @@ export function MatchListPage() {
     [competitionsData],
   );
 
-  // TODO(backend): MatchesController has no `competition` query param, so
-  // this still filters client-side against whatever page of results came
-  // back — it does not widen the search across the full result set. Once a
-  // competition (or competitionId) param exists on GET /api/matches, move
-  // this into `query` alongside status/season so pagination/totalCount stay
-  // correct. Matching by name (not id) because MatchSummaryDTO only carries
-  // competitionName, not a competitionId.
   const filteredItems = useMemo(() => {
     const items = data?.items ?? [];
     if (competition === ALL_COMPETITIONS) return items;

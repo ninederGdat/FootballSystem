@@ -7,7 +7,7 @@ public class TransferRepository : ITransferRepository
 {
     private readonly Supabase.Client _client;
 
-    public TransferRepository(SupabaseClientFactory factory) => _client = factory.CreateServiceRoleClient();
+    public TransferRepository(SupabaseClientFactory factory) => _client = factory.CreateAnonClient();
 
 
     public async Task<List<TransferClean>> GetTransfersByPlayerIdAsync(long playerId, CancellationToken ct = default)

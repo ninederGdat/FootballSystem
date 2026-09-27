@@ -15,7 +15,7 @@ public class LineupRepository : ILineupRepository
         IMatchRepository matchRepository,
         IMatchEventRepository matchEventRepository)
     {
-        _client = factory.CreateServiceRoleClient();
+        _client = factory.CreateAnonClient();
         _matchRepository = matchRepository;
         _matchEventRepository = matchEventRepository;
     }
@@ -86,65 +86,65 @@ public class LineupRepository : ILineupRepository
     // Đóng gói việc "đi theo FK": lineup_players -> lineups -> matches.
     // Service gọi 1 method duy nhất, không cần biết cấu trúc join bên trong.
     // ---------------------------------------------------------------
-  public async Task<(List<PlayerAppearanceRecord> Items, int TotalCount)> GetPlayerAppearancesAsync(
-    long playerId, int page, int pageSize, CancellationToken ct = default)
-{
-    var (pageItems, totalCount) = await GetLineupPlayersByPlayerIdAsync(playerId, page, pageSize, ct);
-
-    if (pageItems.Count == 0)
+    public async Task<(List<PlayerAppearanceRecord> Items, int TotalCount)> GetPlayerAppearancesAsync(
+      long playerId, int page, int pageSize, CancellationToken ct = default)
     {
-        return (new List<PlayerAppearanceRecord>(), totalCount);
-    }
+        var (pageItems, totalCount) = await GetLineupPlayersByPlayerIdAsync(playerId, page, pageSize, ct);
 
-    var lineupIds = pageItems
-        .Where(i => i.LineupId.HasValue)
-        .Select(i => i.LineupId!.Value)
-        .Distinct()
-        .ToList();
-
-    var lineups = await GetByIdsAsync(lineupIds, ct);
-    var lineupsById = lineups.ToDictionary(l => l.Id, l => l);
-
-    var matchIds = lineups.Select(l => l.MatchId).Distinct().ToList();
-    var matches = await _matchRepository.GetByMatchIdsAsync(matchIds, ct); // <-- tên đúng
-var matchesById = matches
-    .GroupBy(m => m.MatchId)
-    .ToDictionary(g => g.Key, g => g.First());   
-
-    // Đếm goals/assists của playerId trong từng match, group theo match_id để tra cứu O(1).
-    // Goals: chỉ tính event_type == "goal" (loại own_goal ra khỏi thành tích ghi bàn của cầu thủ).
-    var events = await _matchEventRepository.GetEventsByMatchIdsAsync(matchIds, ct);
-    var goalsByMatch = events
-        .Where(e => e.EventType == "goal" && e.PlayerId == playerId)
-        .GroupBy(e => e.MatchId)
-        .ToDictionary(g => g.Key, g => g.Count());
-    var assistsByMatch = events
-        .Where(e => e.AssistPlayerId == playerId)
-        .GroupBy(e => e.MatchId)
-        .ToDictionary(g => g.Key, g => g.Count());
-
-    var items = pageItems.Select(lp =>
-    {
-        var lineup = lp.LineupId.HasValue ? lineupsById.GetValueOrDefault(lp.LineupId.Value) : null;
-        var match = lineup is not null ? matchesById.GetValueOrDefault(lineup.MatchId) : null;
-        var matchId = match?.MatchId ?? 0;
-
-        return new PlayerAppearanceRecord
+        if (pageItems.Count == 0)
         {
-            MatchId = matchId,
-            MatchDate = match?.MatchDate ?? default,
-            OpponentName = match?.OpponentName,
-            CompetitionName = match?.CompetitionName,
-            IsStarter = lp.IsStarter,
-            PositionCode = lp.PositionCode,
-            RoleId = lp.RoleId,
-            MinuteIn = lp.MinuteIn,
-            MinuteOut = lp.MinuteOut,
-            Goals = goalsByMatch.GetValueOrDefault(matchId, 0),
-            Assists = assistsByMatch.GetValueOrDefault(matchId, 0)
-        };
-    }).ToList();
+            return (new List<PlayerAppearanceRecord>(), totalCount);
+        }
 
-    return (items, totalCount);
-}
+        var lineupIds = pageItems
+            .Where(i => i.LineupId.HasValue)
+            .Select(i => i.LineupId!.Value)
+            .Distinct()
+            .ToList();
+
+        var lineups = await GetByIdsAsync(lineupIds, ct);
+        var lineupsById = lineups.ToDictionary(l => l.Id, l => l);
+
+        var matchIds = lineups.Select(l => l.MatchId).Distinct().ToList();
+        var matches = await _matchRepository.GetByMatchIdsAsync(matchIds, ct); // <-- tên đúng
+        var matchesById = matches
+            .GroupBy(m => m.MatchId)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        // Đếm goals/assists của playerId trong từng match, group theo match_id để tra cứu O(1).
+        // Goals: chỉ tính event_type == "goal" (loại own_goal ra khỏi thành tích ghi bàn của cầu thủ).
+        var events = await _matchEventRepository.GetEventsByMatchIdsAsync(matchIds, ct);
+        var goalsByMatch = events
+            .Where(e => e.EventType == "goal" && e.PlayerId == playerId)
+            .GroupBy(e => e.MatchId)
+            .ToDictionary(g => g.Key, g => g.Count());
+        var assistsByMatch = events
+            .Where(e => e.AssistPlayerId == playerId)
+            .GroupBy(e => e.MatchId)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        var items = pageItems.Select(lp =>
+        {
+            var lineup = lp.LineupId.HasValue ? lineupsById.GetValueOrDefault(lp.LineupId.Value) : null;
+            var match = lineup is not null ? matchesById.GetValueOrDefault(lineup.MatchId) : null;
+            var matchId = match?.MatchId ?? 0;
+
+            return new PlayerAppearanceRecord
+            {
+                MatchId = matchId,
+                MatchDate = match?.MatchDate ?? default,
+                OpponentName = match?.OpponentName,
+                CompetitionName = match?.CompetitionName,
+                IsStarter = lp.IsStarter,
+                PositionCode = lp.PositionCode,
+                RoleId = lp.RoleId,
+                MinuteIn = lp.MinuteIn,
+                MinuteOut = lp.MinuteOut,
+                Goals = goalsByMatch.GetValueOrDefault(matchId, 0),
+                Assists = assistsByMatch.GetValueOrDefault(matchId, 0)
+            };
+        }).ToList();
+
+        return (items, totalCount);
+    }
 }

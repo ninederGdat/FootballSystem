@@ -31,7 +31,7 @@ jobs:
       - name: Run FotmobSync (one-shot)
         run: dotnet run --project FotmobSync --no-build --configuration Release -- --run-once
         env:
-          FOTMOB__XMAS_TOKEN: ${{ secrets.FOTMOB_XMAS_TOKEN }}
+          FOTMOB__XMASTOKEN: ${{ secrets.FOTMOB_XMAS_TOKEN }}
           SUPABASE__URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE__ANONKEY: ${{ secrets.SUPABASE_ANON_KEY }}
           SUPABASE__SERVICEROLEKEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

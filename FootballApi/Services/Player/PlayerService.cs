@@ -50,7 +50,7 @@ namespace FootballApi.Services.Player
         // GET /api/players/{playerId}
         // ---------------------------------------------------------------
 
-        public async Task<PlayerProfileDTO> GetPlayerProfileAsync(int playerId, CancellationToken ct)
+        public async Task<PlayerProfileResponse> GetPlayerProfileAsync(int playerId, CancellationToken ct)
         {
             long id = playerId;
             var player = await _playerRepository.GetByIdAsync(id, ct);
@@ -71,7 +71,7 @@ namespace FootballApi.Services.Player
             if (transferTask is null)
             {
                 _logger.LogWarning("Player {PlayerId} not found.", id);
-                transferTask = Task.FromResult(new PlayerTransferStatusDTO());
+                transferTask = Task.FromResult(new PlayerTransferStatusResponse());
             }
             // Fire both independent database queries in parallel.
             // This reduces total latency compared to awaiting them sequentially.
@@ -86,37 +86,37 @@ namespace FootballApi.Services.Player
         /// Converts domain models into the API response DTO.
         /// No business logic should be added here.
         /// </summary>
-        private static PlayerProfileDTO MapToProfileDto(PlayerClean player, TeamClean? team, PositionClean? position, PlayerTransferStatusDTO? status)
+        private static PlayerProfileResponse MapToProfileDto(PlayerClean player, TeamClean? team, PositionClean? position, PlayerTransferStatusResponse? status)
         {
-            return new PlayerProfileDTO
+            return new PlayerProfileResponse
             {
                 PlayerId = player.PlayerId,
                 Name = player.Name,
                 ShirtNumber = player.ShirtNumber,
                 DateOfBirth = player.DateOfBirth,
                 Nationality = player.Nationality,
-                Status = new PlayerStatusDTO
+                Status = new PlayerStatusResponse
                 {
                     Status = player.Status,
                     InjuryDescription = player.InjuryDescription
                 },
 
-                CurrentTeam = team is null ? null : new PlayerTeamDTO
+                CurrentTeam = team is null ? null : new PlayerTeamResponse
                 {
                     TeamId = (int)team.TeamId,
                     TeamName = team.Name
                 },
-                PreferredPosition = position is null ? null : new PlayerPositionDTO
+                PreferredPosition = position is null ? null : new PlayerPositionResponse
                 {
                     PositionCode = position.PositionCode,
                     PositionName = position.PositionName
                 },
-                Contract = new PlayerContractDTO
+                Contract = new PlayerContractResponse
                 {
                     ContractUntil = player.ContractUntil,
                     MarketValue = player.MarketValue
                 },
-                TransferStatus = status is null ? null : new PlayerTransferStatusDTO
+                TransferStatus = status is null ? null : new PlayerTransferStatusResponse
                 {
                     Status = status.Status,
                     CurrentTeam = status.CurrentTeam,
@@ -129,14 +129,14 @@ namespace FootballApi.Services.Player
         // GET /api/players/{playerId}/appearances
         // ---------------------------------------------------------------
         // RoleId, MinuteIn, MinuteOut, plus a TotalCount for paging.
-        public async Task<(IReadOnlyList<PlayerAppearanceDTO> Items, int TotalCount)> GetPlayerAppearancesAsync(
+        public async Task<(IReadOnlyList<PlayerAppearanceResponse> Items, int TotalCount)> GetPlayerAppearancesAsync(
         long playerId, int page, int pageSize, CancellationToken ct)
         {
             var raw = await _lineupRepository.GetPlayerAppearancesAsync(playerId, page, pageSize, ct);
 
             if (raw.Items.Count == 0)
             {
-                return (Array.Empty<PlayerAppearanceDTO>(), raw.TotalCount);
+                return (Array.Empty<PlayerAppearanceResponse>(), raw.TotalCount);
             }
 
             // Collect unique position codes so each position is loaded only once.
@@ -166,14 +166,14 @@ namespace FootballApi.Services.Player
                     ? positionsByCode.GetValueOrDefault(item.PositionCode)
                     : null;
 
-                return new PlayerAppearanceDTO
+                return new PlayerAppearanceResponse
                 {
                     MatchId = item.MatchId,
                     MatchDate = item.MatchDate,
                     OpponentName = item.OpponentName,
                     CompetitionName = item.CompetitionName,
                     IsStarter = item.IsStarter,
-                    PositionPlayed = new PlayerPositionDTO
+                    PositionPlayed = new PlayerPositionResponse
                     {
                         PositionCode = position?.PositionCode
                             ?? item.PositionCode
@@ -200,7 +200,7 @@ namespace FootballApi.Services.Player
         // ---------------------------------------------------------------
         // Search returns only player data.
         // Team names are resolved separately.
-        public async Task<(IReadOnlyList<PlayerSummaryDTO> Items, int TotalCount)> SearchPlayersAsync(
+        public async Task<(IReadOnlyList<PlayerSummaryResponse> Items, int TotalCount)> SearchPlayersAsync(
            PlayerSearchQuery query, CancellationToken ct)
 
         {
@@ -216,7 +216,7 @@ namespace FootballApi.Services.Player
 
             if (players.Count == 0)
             {
-                return (Array.Empty<PlayerSummaryDTO>(), totalCount);
+                return (Array.Empty<PlayerSummaryResponse>(), totalCount);
             }
 
             var teamIds = players.Select(p => p.TeamId).Distinct().ToList();
@@ -244,7 +244,7 @@ namespace FootballApi.Services.Player
                     ? positionsByCode.GetValueOrDefault(player.PreferredPositionCode)
                     : null;
 
-                return new PlayerSummaryDTO
+                return new PlayerSummaryResponse
                 {
                     PlayerId = player.PlayerId,
                     Name = player.Name,

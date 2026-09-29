@@ -12,12 +12,12 @@ public class CompetitionService : ICompetitionService
         _repository = repository;
     }
 
-    public async Task<IReadOnlyList<CompetitionSummaryDto>> GetAllAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<CompetitionSummaryResponse>> GetAllAsync(CancellationToken ct = default)
     {
         var competitions = await _repository.GetAllAsync(ct);
 
         return competitions
-            .Select(competition => new CompetitionSummaryDto
+            .Select(competition => new CompetitionSummaryResponse
             {
                 Id = checked((int)competition.CompetitionId),
                 Name = competition.Name

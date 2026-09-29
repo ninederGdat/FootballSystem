@@ -1,5 +1,4 @@
 using FootballApi.DTOs.Matches;
-using FootballApi.DTOs.Responses;
 using FootballApi.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,9 +17,9 @@ public class MatchesController : ControllerBase
 
     /// <summary>Lấy thông tin chi tiết một trận đấu</summary>
     [HttpGet("{matchId:long}")]
-    [ProducesResponseType(typeof(MatchResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(MatchDetailResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<MatchResponse>> GetMatch(long matchId)
+    public async Task<ActionResult<MatchDetailResponse>> GetMatch(long matchId)
     {
         var result = await _matchService.GetMatchAsync(matchId);
         return Ok(result);

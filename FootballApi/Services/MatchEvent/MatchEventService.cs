@@ -1,5 +1,5 @@
 using System.Text.Json;
-using FootballApi.DTOs.Responses;
+using FootballApi.DTOs.Matches;
 using FootballApi.Repositories.MatchEvent;
 using FootballApi.Repositories.Player;
 using FootballSystem.Shared.Models.Clean;
@@ -17,7 +17,7 @@ public class MatchEventService : IMatchEventService
         _playerRepository = playerRepository;
     }
 
-    public async Task<List<MatchEventItemResponse>> GetEventsByMatchIdAsync(long matchId, CancellationToken ct = default)
+    public async Task<List<MatchEventResponse>> GetEventsByMatchIdAsync(long matchId, CancellationToken ct = default)
     {
         var events = await _eventRepository.GetEventsByMatchIdAsync(matchId, ct);
         if (events.Count == 0) return [];
@@ -35,7 +35,7 @@ public class MatchEventService : IMatchEventService
                 .ToDictionary(g => g.Key, g => g.First())
             : [];
 
-        return events.Select(e => new MatchEventItemResponse(
+        return events.Select(e => new MatchEventResponse(
             Id: e.Id,
             EventId: e.FotmobEventId,
             Type: e.EventType,
@@ -48,7 +48,7 @@ public class MatchEventService : IMatchEventService
         )).ToList();
     }
 
-    private static PlayerRef? BuildPlayerRef(
+    private static MatchEventPlayerReferenceResponse? BuildPlayerRef(
         long? playerId, string rawPayload, string rawKey,
         Dictionary<long, PlayerClean> playersById)
     {
@@ -56,12 +56,12 @@ public class MatchEventService : IMatchEventService
         {
             var name = playersById.GetValueOrDefault(playerId.Value)?.Name
                        ?? GetFallbackName(rawPayload, rawKey);
-            return new PlayerRef(playerId.Value, name);
+            return new MatchEventPlayerReferenceResponse(playerId.Value, name);
         }
 
         // player_id null (thường là đội khách) — vẫn thử hiển thị tên từ raw_payload nếu có
         var fallbackName = GetFallbackName(rawPayload, rawKey);
-        return fallbackName is not null ? new PlayerRef(null, fallbackName) : null;
+        return fallbackName is not null ? new MatchEventPlayerReferenceResponse(null, fallbackName) : null;
     }
 
     private static string? GetFallbackName(string rawPayload, string propertyKey)

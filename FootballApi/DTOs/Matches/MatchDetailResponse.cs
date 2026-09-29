@@ -1,9 +1,9 @@
-using FootballApi.DTOs.Responses;
+using FootballApi.DTOs.Lineups;
 using FootballSystem.Shared.Models.Clean;
 
-namespace FootballApi.DTOs.Responses;
+namespace FootballApi.DTOs.Matches;
 
-public record MatchResponse(
+public record MatchDetailResponse(
     long MatchId,
     long? TeamId,
     long? OpponentTeamId,
@@ -15,12 +15,12 @@ public record MatchResponse(
     int? ScoreHome,
     int? ScoreAway,
     string Status,
-    List<MatchEventItemResponse> Events,
+    List<MatchEventResponse> Events,
     LineupResponse? Lineup)
 {
-    public static MatchResponse FromClean(
+    public static MatchDetailResponse FromClean(
         MatchClean clean,
-        List<MatchEventItemResponse> events,
+        List<MatchEventResponse> events,
         LineupResponse? lineup) => new(
         clean.MatchId,
         clean.TeamId,

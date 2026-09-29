@@ -1,7 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace FootballApi.DTOs.Responses;
+namespace FootballApi.DTOs.Transfers;
 
 public sealed class TransferResponse
 {

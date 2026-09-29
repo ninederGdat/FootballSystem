@@ -4,5 +4,5 @@ namespace FootballApi.Services.Competition;
 
 public interface ICompetitionService
 {
-    Task<IReadOnlyList<CompetitionSummaryDto>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<CompetitionSummaryResponse>> GetAllAsync(CancellationToken ct = default);
 }

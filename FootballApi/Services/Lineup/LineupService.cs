@@ -1,5 +1,5 @@
 using FootballApi.Common.Exceptions;
-using FootballApi.DTOs.Responses;
+using FootballApi.DTOs.Lineups;
 using FootballApi.Repositories.Position;
 using FootballApi.Repositories.PositionRole;
 using FootballSystem.Shared.Models.Clean;
@@ -117,7 +117,7 @@ public class LineupService : ILineupService
             LineupId = lineup.Id,
             Type = lineup.Type,
             Formation = formationTask.Result is { } f
-                ? new FormationDto { Id = f.Id, Name = f.Name, Description = f.Description }
+                ? new FormationResponse { Id = f.Id, Name = f.Name, Description = f.Description }
                 : null,
             Starters = starters,
             Substitutes = substitutes

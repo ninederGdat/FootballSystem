@@ -1,20 +1,4 @@
-namespace FootballApi.DTOs.Responses;
-
-public class LineupResponse
-{
-    public long LineupId { get; set; }
-    public string Type { get; set; } = default!; // Predicted / Official
-    public FormationDto? Formation { get; set; }
-    public List<LineupPlayerResponse> Starters { get; set; } = new();
-    public List<LineupPlayerResponse> Substitutes { get; set; } = new();
-}
-
-public class FormationDto
-{
-    public long Id { get; set; }
-    public string Name { get; set; } = default!;
-    public string Description { get; set; } = default!;
-}
+namespace FootballApi.DTOs.Lineups;
 
 public class LineupPlayerResponse
 {

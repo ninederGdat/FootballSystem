@@ -17,9 +17,9 @@ public class PlayersController : ControllerBase
 
     /// <summary>Lấy hồ sơ chi tiết một cầu thủ</summary>
     [HttpGet("{playerId:long}")]
-    [ProducesResponseType(typeof(PlayerProfileDTO), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PlayerProfileResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<PlayerProfileDTO>> GetPlayer(int playerId, CancellationToken ct)
+    public async Task<ActionResult<PlayerProfileResponse>> GetPlayer(int playerId, CancellationToken ct)
     {
         var result = await _playerService.GetPlayerProfileAsync(playerId, ct);
         return Ok(result);

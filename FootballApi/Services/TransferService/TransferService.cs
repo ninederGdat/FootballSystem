@@ -1,6 +1,6 @@
 using FootballApi.Common.Exceptions;
+using FootballApi.DTOs.Common;
 using FootballApi.DTOs.Players;
-using FootballApi.DTOs.Responses;
 using FootballApi.DTOs.Transfers;
 using FootballApi.Repositories.Player;
 using FootballApi.Repositories.Transfer;
@@ -28,7 +28,7 @@ namespace FootballApi.Services.Transfer
             _seasonService = seasonService;
         }
 
-        public async Task<PlayerTransferStatusDTO> GetPlayerTransferStatusAsync(long playerId, long teamId, CancellationToken ct)
+        public async Task<PlayerTransferStatusResponse> GetPlayerTransferStatusAsync(long playerId, long teamId, CancellationToken ct)
         {
             var transferHistory = await _transferRepository.GetTransfersByPlayerIdAsync(playerId, ct);
 
@@ -43,7 +43,7 @@ namespace FootballApi.Services.Transfer
             {
                 _logger.LogInformation("Player {playerId} doesn't have any transfer in this season", playerId);
 
-                return new PlayerTransferStatusDTO
+                return new PlayerTransferStatusResponse
                 {
                     Status = playerInfo.TransferStatus,
                     CurrentTeam = "Chelsea",
@@ -52,7 +52,7 @@ namespace FootballApi.Services.Transfer
             }
 
             var latestTransfer = transferHistory.OrderByDescending(x => x.TransferDate).First();
-            var status = new PlayerTransferStatusDTO
+            var status = new PlayerTransferStatusResponse
             {
                 Status = MaptoStatus(latestTransfer.TransferType, teamId, latestTransfer.ToClubId),
                 CurrentTeam = latestTransfer.ToClubName,

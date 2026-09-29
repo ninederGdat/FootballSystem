@@ -1,4 +1,4 @@
-using FootballApi.DTOs.Responses;
+using FootballApi.DTOs.Common;
 using FootballApi.DTOs.Transfers;
 using FootballApi.Services.Transfer;
 using Microsoft.AspNetCore.Mvc;

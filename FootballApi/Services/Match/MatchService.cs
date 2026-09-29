@@ -1,6 +1,6 @@
 using FootballApi.Common.Exceptions;
 using FootballApi.DTOs.Matches;
-using FootballApi.DTOs.Responses;
+using FootballApi.DTOs.Lineups;
 using FootballApi.Repositories.Match;
 using FootballApi.Services.MatchEvent;
 using FootballApi.Services.Season;
@@ -24,7 +24,7 @@ public class MatchService : IMatchService
         _seasonService = seasonService;
     }
 
-    public async Task<MatchResponse> GetMatchAsync(long matchId)
+    public async Task<MatchDetailResponse> GetMatchAsync(long matchId)
     {
         var match = await _repository.GetByMatchIdAsync(matchId);
 
@@ -36,10 +36,10 @@ public class MatchService : IMatchService
 
         await Task.WhenAll(eventsTask, lineupTask);
 
-        return MatchResponse.FromClean(match, eventsTask.Result, lineupTask.Result);
+        return MatchDetailResponse.FromClean(match, eventsTask.Result, lineupTask.Result);
     }
 
-    public async Task<(IReadOnlyList<MatchSummaryDTO> Items, int TotalCount)> SearchMatchesAsync(
+    public async Task<(IReadOnlyList<MatchSummaryResponse> Items, int TotalCount)> SearchMatchesAsync(
          MatchSearchQuery query, CancellationToken ct = default)
     {
         var fromDate = query.FromDate;
@@ -66,9 +66,9 @@ public class MatchService : IMatchService
         return (items, totalCount);
     }
 
-    private static MatchSummaryDTO MapToSummaryDto(MatchClean match)
+    private static MatchSummaryResponse MapToSummaryDto(MatchClean match)
     {
-        return new MatchSummaryDTO
+        return new MatchSummaryResponse
         {
             MatchId = match.MatchId,
             MatchDate = match.MatchDate,

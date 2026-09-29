@@ -60,8 +60,8 @@ public class CompetitionsControllerTests
     {
         var service = new FakeCompetitionService(
         [
-            new CompetitionSummaryDto { Id = 42, Name = "Champions League" },
-            new CompetitionSummaryDto { Id = 47, Name = "Premier League" }
+            new CompetitionSummaryResponse { Id = 42, Name = "Champions League" },
+            new CompetitionSummaryResponse { Id = 47, Name = "Premier League" }
         ]);
 
         var controller = new CompetitionsController(service);
@@ -77,14 +77,14 @@ public class CompetitionsControllerTests
 
     private sealed class FakeCompetitionService : ICompetitionService
     {
-        private readonly IReadOnlyList<CompetitionSummaryDto> _items;
+        private readonly IReadOnlyList<CompetitionSummaryResponse> _items;
 
-        public FakeCompetitionService(IReadOnlyList<CompetitionSummaryDto> items)
+        public FakeCompetitionService(IReadOnlyList<CompetitionSummaryResponse> items)
         {
             _items = items;
         }
 
-        public Task<IReadOnlyList<CompetitionSummaryDto>> GetAllAsync(CancellationToken ct = default)
+        public Task<IReadOnlyList<CompetitionSummaryResponse>> GetAllAsync(CancellationToken ct = default)
         {
             return Task.FromResult(_items);
         }

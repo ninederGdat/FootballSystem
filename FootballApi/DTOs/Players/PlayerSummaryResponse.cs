@@ -1,6 +1,6 @@
 namespace FootballApi.DTOs.Players;
 
-public class PlayerSummaryDTO
+public class PlayerSummaryResponse
 {
     public long PlayerId { get; set; }
     public string Name { get; set; } = default!;
@@ -14,12 +14,4 @@ public class PlayerSummaryDTO
     public decimal? MarketValue { get; set; }
     public DateOnly? ContractUntil { get; set; }
     public string? TransferStatus { get; set; }
-}
-
-public class PlayerSearchResult
-{
-    public int Page { get; set; }
-    public int PageSize { get; set; }
-    public int TotalCount { get; set; }
-    public List<PlayerSummaryDTO> Items { get; set; } = [];
 }

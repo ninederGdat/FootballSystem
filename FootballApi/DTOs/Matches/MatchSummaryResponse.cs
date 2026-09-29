@@ -2,9 +2,9 @@ namespace FootballApi.DTOs.Matches;
 
 /// <summary>
 /// Thông tin tóm tắt một trận đấu, dùng cho danh sách (không kèm events/lineup —
-/// những phần đó chỉ có trong MatchResponse chi tiết theo matchId).
+/// những phần đó chỉ có trong MatchDetailResponse chi tiết theo matchId).
 /// </summary>
-public class MatchSummaryDTO
+public class MatchSummaryResponse
 {
     public long MatchId { get; set; }
     public DateTime MatchDate { get; set; }

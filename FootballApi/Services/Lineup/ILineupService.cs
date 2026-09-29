@@ -1,4 +1,4 @@
-using FootballApi.DTOs.Responses;
+using FootballApi.DTOs.Lineups;
 
 public interface ILineupService
 {

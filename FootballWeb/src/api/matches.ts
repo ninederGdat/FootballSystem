@@ -2,8 +2,9 @@ import { apiGet } from "./client";
 import type {
   MatchResponse,
   MatchSearchQuery,
-  MatchSearchResult,
+  MatchSummaryDTO,
 } from "../types/match";
+import type { PagedResponse } from "../types/transfer";
 
 export function getMatch(matchId: number, signal?: AbortSignal) {
   return apiGet<MatchResponse>(`/api/matches/${matchId}`, undefined, {
@@ -12,7 +13,7 @@ export function getMatch(matchId: number, signal?: AbortSignal) {
 }
 
 export function searchMatches(query: MatchSearchQuery, signal?: AbortSignal) {
-  return apiGet<MatchSearchResult>(
+  return apiGet<PagedResponse<MatchSummaryDTO>>(
     "/api/matches",
     {
       fromDate: query.fromDate,

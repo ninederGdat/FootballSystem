@@ -148,7 +148,7 @@ export function MatchListPage() {
   );
 
   const filteredItems = useMemo(() => {
-    const items = data?.items ?? [];
+    const items = data?.data ?? [];
     if (competition === ALL_COMPETITIONS) return items;
     return items.filter((m) => m.competitionName === competition);
   }, [data, competition]);
@@ -158,8 +158,8 @@ export function MatchListPage() {
     [filteredItems],
   );
 
-  const totalCount = data?.totalCount ?? 0;
-  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const totalCount = data?.pagination.totalItems ?? 0;
+  const totalPages = Math.max(1, data?.pagination.totalPages ?? 1);
 
   function handleStatusChange(value: MatchStatus | "all") {
     setStatus(value);

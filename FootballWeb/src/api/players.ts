@@ -1,10 +1,11 @@
 import { apiGet } from "./client";
 import type {
-  PlayerAppearancesResult,
+  PlayerAppearanceDTO,
   PlayerProfileDTO,
   PlayerSearchQuery,
-  PlayerSearchResult,
+  PlayerSummaryDTO,
 } from "../types/player";
+import type { PagedResponse } from "../types/transfer";
 
 export function getPlayer(playerId: number, signal?: AbortSignal) {
   return apiGet<PlayerProfileDTO>(`/api/players/${playerId}`, undefined, {
@@ -18,7 +19,7 @@ export function getPlayerAppearances(
   pageSize: number,
   signal?: AbortSignal,
 ) {
-  return apiGet<PlayerAppearancesResult>(
+  return apiGet<PagedResponse<PlayerAppearanceDTO>>(
     `/api/players/${playerId}/appearances`,
     { page, pageSize },
     { signal },
@@ -26,7 +27,7 @@ export function getPlayerAppearances(
 }
 
 export function searchPlayers(query: PlayerSearchQuery, signal?: AbortSignal) {
-  return apiGet<PlayerSearchResult>(
+  return apiGet<PagedResponse<PlayerSummaryDTO>>(
     "/api/players",
     {
       search: query.search,

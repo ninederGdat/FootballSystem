@@ -90,11 +90,3 @@ export interface MatchSearchQuery {
   page?: number;
   pageSize?: number;
 }
-
-export interface MatchSearchResult {
-  items: MatchSummaryDTO[];
-  totalCount: number;
-  season: string;
-  page: number;
-  pageSize: number;
-}

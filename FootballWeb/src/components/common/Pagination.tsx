@@ -1,24 +1,19 @@
+import type { PaginationMetadata } from "../../types/transfer";
+
 interface PaginationProps {
-  page: number;
-  pageSize: number;
-  totalCount: number;
+  pagination: PaginationMetadata;
   onPageChange: (page: number) => void;
 }
 
-export function Pagination({
-  page,
-  pageSize,
-  totalCount,
-  onPageChange,
-}: PaginationProps) {
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+export function Pagination({ pagination, onPageChange }: PaginationProps) {
+  const { page, totalItems, totalPages } = pagination;
 
   if (totalPages <= 1) return null;
 
   return (
     <div className="flex items-center justify-between border-t border-surface-border pt-3 text-sm">
       <span className="pl-3 pb-3 text-ink-muted">
-        Page {page} of {totalPages} &middot; {totalCount} total
+        Page {page} of {totalPages} &middot; {totalItems} total
       </span>
       <div className="flex gap-2 pb-3 pr-3">
         <button

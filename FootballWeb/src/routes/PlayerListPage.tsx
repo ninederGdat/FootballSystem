@@ -7,6 +7,7 @@ import {
   EmptyState,
 } from "../components/common/States";
 import type { PlayerSummaryDTO } from "../types/player";
+import type { PaginationMetadata } from "../types/transfer";
 import { formatMarketValue } from "../lib/format";
 
 const PAGE_SIZE = 20;
@@ -55,8 +56,8 @@ export function PlayerListPage() {
 
   const items =
     data && transferStatus !== "all"
-      ? data.items.filter((p) => p.transferStatus === transferStatus)
-      : (data?.items ?? []);
+      ? data.data.filter((p) => p.transferStatus === transferStatus)
+      : (data?.data ?? []);
 
   return (
     <div className="mx-auto max-w-[1600px]">
@@ -195,12 +196,7 @@ export function PlayerListPage() {
             </table>
           </div>
 
-          <PaginationBar
-            page={data.page}
-            pageSize={data.pageSize}
-            totalCount={data.totalCount}
-            onPageChange={setPage}
-          />
+          <PaginationBar pagination={data.pagination} onPageChange={setPage} />
         </div>
       )}
     </div>
@@ -314,26 +310,22 @@ function PlayerRow({
 }
 
 function PaginationBar({
-  page,
-  pageSize,
-  totalCount,
+  pagination,
   onPageChange,
 }: {
-  page: number;
-  pageSize: number;
-  totalCount: number;
+  pagination: PaginationMetadata;
   onPageChange: (page: number) => void;
 }) {
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-  const from = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
-  const to = Math.min(page * pageSize, totalCount);
+  const { page, pageSize, totalItems, totalPages } = pagination;
+  const from = totalItems === 0 ? 0 : (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, totalItems);
 
   const pageNumbers = buildPageList(page, totalPages);
 
   return (
     <div className="flex items-center justify-between border-t border-outline-variant bg-surface-container-high p-3">
       <span className="font-body-sm text-on-surface-variant">
-        Showing {from} to {to} of {totalCount} players
+        Showing {from} to {to} of {totalItems} players
       </span>
       <div className="flex items-center gap-1">
         <button

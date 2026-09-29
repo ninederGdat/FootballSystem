@@ -1,4 +1,5 @@
 using FootballApi.Common.Exceptions;
+using FootballApi.DTOs.Common;
 using FootballApi.DTOs.Matches;
 using FootballApi.DTOs.Lineups;
 using FootballApi.Repositories.Match;
@@ -39,7 +40,7 @@ public class MatchService : IMatchService
         return MatchDetailResponse.FromClean(match, eventsTask.Result, lineupTask.Result);
     }
 
-    public async Task<(IReadOnlyList<MatchSummaryResponse> Items, int TotalCount)> SearchMatchesAsync(
+    public async Task<PagedResponse<MatchSummaryResponse>> SearchMatchesAsync(
          MatchSearchQuery query, CancellationToken ct = default)
     {
         var fromDate = query.FromDate;
@@ -63,7 +64,17 @@ public class MatchService : IMatchService
 
         var items = matches.Select(MapToSummaryDto).ToList();
 
-        return (items, totalCount);
+        return new PagedResponse<MatchSummaryResponse>
+        {
+            Data = items,
+            Pagination = new PaginationMetadata
+            {
+                Page = query.Page,
+                PageSize = query.PageSize,
+                TotalItems = totalCount,
+                TotalPages = (int)Math.Ceiling((double)totalCount / query.PageSize)
+            }
+        };
     }
 
     private static MatchSummaryResponse MapToSummaryDto(MatchClean match)

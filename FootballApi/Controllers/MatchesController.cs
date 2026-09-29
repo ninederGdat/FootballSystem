@@ -1,3 +1,4 @@
+using FootballApi.DTOs.Common;
 using FootballApi.DTOs.Matches;
 using FootballApi.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -27,8 +28,8 @@ public class MatchesController : ControllerBase
 
     /// <summary>Tìm kiếm/lọc danh sách trận đấu theo ngày, đối thủ, trạng thái (phân trang)</summary>
     [HttpGet]
-    [ProducesResponseType(typeof(MatchListResult), StatusCodes.Status200OK)]
-    public async Task<ActionResult<MatchListResult>> SearchMatches(
+    [ProducesResponseType(typeof(PagedResponse<MatchSummaryResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResponse<MatchSummaryResponse>>> SearchMatches(
         [FromQuery] DateTime? fromDate,
         [FromQuery] DateTime? toDate,
         [FromQuery] string? season,
@@ -52,14 +53,7 @@ public class MatchesController : ControllerBase
             PageSize = pageSize
         };
 
-        var (items, totalCount) = await _matchService.SearchMatchesAsync(query, ct);
-
-        return Ok(new MatchListResult
-        {
-            Page = page,
-            PageSize = pageSize,
-            TotalCount = totalCount,
-            Items = items.ToList()
-        });
+        var result = await _matchService.SearchMatchesAsync(query, ct);
+        return Ok(result);
     }
 }

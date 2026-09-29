@@ -150,11 +150,9 @@ export function PlayerDetailPage() {
 
           {appearances.data && (
             <div className="space-y-3">
-              <AppearanceList appearances={appearances.data.appearances} />
+              <AppearanceList appearances={appearances.data.data} />
               <Pagination
-                page={appearances.data.page}
-                pageSize={appearances.data.pageSize}
-                totalCount={appearances.data.totalCount}
+                pagination={appearances.data.pagination}
                 onPageChange={setPage}
               />
             </div>

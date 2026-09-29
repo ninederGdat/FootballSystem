@@ -1,3 +1,4 @@
+using FootballApi.DTOs.Common;
 using FootballApi.DTOs.Players;
 using FootballApi.Repositories.Player;
 using FootballApi.Repositories.Position;
@@ -129,14 +130,14 @@ namespace FootballApi.Services.Player
         // GET /api/players/{playerId}/appearances
         // ---------------------------------------------------------------
         // RoleId, MinuteIn, MinuteOut, plus a TotalCount for paging.
-        public async Task<(IReadOnlyList<PlayerAppearanceResponse> Items, int TotalCount)> GetPlayerAppearancesAsync(
+        public async Task<PagedResponse<PlayerAppearanceResponse>> GetPlayerAppearancesAsync(
         long playerId, int page, int pageSize, CancellationToken ct)
         {
             var raw = await _lineupRepository.GetPlayerAppearancesAsync(playerId, page, pageSize, ct);
 
             if (raw.Items.Count == 0)
             {
-                return (Array.Empty<PlayerAppearanceResponse>(), raw.TotalCount);
+                return CreatePagedResponse(Array.Empty<PlayerAppearanceResponse>(), page, pageSize, raw.TotalCount);
             }
 
             // Collect unique position codes so each position is loaded only once.
@@ -192,7 +193,7 @@ namespace FootballApi.Services.Player
                 };
             }).ToList();
 
-            return (appearances, raw.TotalCount);
+            return CreatePagedResponse(appearances, page, pageSize, raw.TotalCount);
         }
 
         // ---------------------------------------------------------------
@@ -200,7 +201,7 @@ namespace FootballApi.Services.Player
         // ---------------------------------------------------------------
         // Search returns only player data.
         // Team names are resolved separately.
-        public async Task<(IReadOnlyList<PlayerSummaryResponse> Items, int TotalCount)> SearchPlayersAsync(
+        public async Task<PagedResponse<PlayerSummaryResponse>> SearchPlayersAsync(
            PlayerSearchQuery query, CancellationToken ct)
 
         {
@@ -216,7 +217,7 @@ namespace FootballApi.Services.Player
 
             if (players.Count == 0)
             {
-                return (Array.Empty<PlayerSummaryResponse>(), totalCount);
+                return CreatePagedResponse(Array.Empty<PlayerSummaryResponse>(), query.Page, query.PageSize, totalCount);
             }
 
             var teamIds = players.Select(p => p.TeamId).Distinct().ToList();
@@ -262,8 +263,21 @@ namespace FootballApi.Services.Player
                 };
             }).ToList();
 
-            return (items, totalCount);
+            return CreatePagedResponse(items, query.Page, query.PageSize, totalCount);
         }
+
+        private static PagedResponse<T> CreatePagedResponse<T>(
+            IReadOnlyList<T> data, int page, int pageSize, int totalItems) => new()
+            {
+                Data = data,
+                Pagination = new PaginationMetadata
+                {
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalItems = totalItems,
+                    TotalPages = (int)Math.Ceiling((double)totalItems / pageSize)
+                }
+            };
 
         /// <summary>
         /// Computes age in whole years from a birth date, as of today (UTC).

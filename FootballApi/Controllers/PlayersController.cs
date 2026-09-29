@@ -1,3 +1,4 @@
+using FootballApi.DTOs.Common;
 using FootballApi.DTOs.Players;
 using FootballApi.Services.Player;
 using Microsoft.AspNetCore.Mvc;
@@ -27,8 +28,8 @@ public class PlayersController : ControllerBase
 
     /// <summary>Lấy lịch sử ra sân của một cầu thủ (phân trang)</summary>
     [HttpGet("{playerId:long}/appearances")]
-    [ProducesResponseType(typeof(PlayerAppearancesResult), StatusCodes.Status200OK)]
-    public async Task<ActionResult<PlayerAppearancesResult>> GetPlayerAppearances(
+    [ProducesResponseType(typeof(PagedResponse<PlayerAppearanceResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResponse<PlayerAppearanceResponse>>> GetPlayerAppearances(
         int playerId,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -37,22 +38,14 @@ public class PlayersController : ControllerBase
         if (page < 1) page = 1;
         if (pageSize is < 1 or > 100) pageSize = 20;
 
-        var (items, totalCount) = await _playerService.GetPlayerAppearancesAsync(playerId, page, pageSize, ct);
-
-        return Ok(new PlayerAppearancesResult
-        {
-            PlayerId = playerId,
-            Page = page,
-            PageSize = pageSize,
-            TotalCount = totalCount,
-            Appearances = items.ToList()
-        });
+        var result = await _playerService.GetPlayerAppearancesAsync(playerId, page, pageSize, ct);
+        return Ok(result);
     }
 
     /// <summary>Tìm kiếm cầu thủ theo tên, đội, vị trí, hoặc quốc tịch (phân trang)</summary>
     [HttpGet]
-    [ProducesResponseType(typeof(PlayerSearchResult), StatusCodes.Status200OK)]
-    public async Task<ActionResult<PlayerSearchResult>> SearchPlayers(
+    [ProducesResponseType(typeof(PagedResponse<PlayerSummaryResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResponse<PlayerSummaryResponse>>> SearchPlayers(
         [FromQuery] string? search,
         [FromQuery] int? teamId,
         [FromQuery] string? positionCode,
@@ -76,14 +69,7 @@ public class PlayersController : ControllerBase
             PageSize = pageSize
         };
 
-        var (items, totalCount) = await _playerService.SearchPlayersAsync(query, ct);
-
-        return Ok(new PlayerSearchResult
-        {
-            Page = page,
-            PageSize = pageSize,
-            TotalCount = totalCount,
-            Items = items.ToList()
-        });
+        var result = await _playerService.SearchPlayersAsync(query, ct);
+        return Ok(result);
     }
 }

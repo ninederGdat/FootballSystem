@@ -48,14 +48,6 @@ export interface PlayerAppearanceDTO {
   assists: number;
 }
 
-export interface PlayerAppearancesResult {
-  playerId: number;
-  page: number;
-  pageSize: number;
-  totalCount: number;
-  appearances: PlayerAppearanceDTO[];
-}
-
 export interface PlayerSummaryDTO {
   playerId: number;
   name: string;
@@ -69,13 +61,6 @@ export interface PlayerSummaryDTO {
   marketValue: number | null;
   transferStatus: string | null;
   contractUntil: string | null; // DateOnly -> "YYYY-MM-DD"
-}
-
-export interface PlayerSearchResult {
-  page: number;
-  pageSize: number;
-  totalCount: number;
-  items: PlayerSummaryDTO[];
 }
 
 export interface PlayerSearchQuery {

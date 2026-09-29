@@ -312,12 +312,7 @@ export default function TransferPage() {
             </table>
 
             {pagination && (
-              <Pagination
-                page={pagination.page}
-                pageSize={pagination.pageSize}
-                totalCount={pagination.totalItems}
-                onPageChange={setPage}
-              />
+              <Pagination pagination={pagination} onPageChange={setPage} />
             )}
           </>
         )}

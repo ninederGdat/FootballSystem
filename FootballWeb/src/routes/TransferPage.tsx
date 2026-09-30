@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTransfers } from "../features/transfers/hooks";
+import { useSeasons } from "../features/seasons/hooks";
 import type { TransferApiItem, TransferDirection } from "../types/transfer";
 import {
   LoadingState,
@@ -9,8 +10,6 @@ import {
 import { Pagination } from "../components/common/Pagination";
 import { formatMatchDate, formatMarketValue } from "../lib/format";
 
-// TODO(backend): centralize this — currently duplicated wherever the app
-// needs to know "which side is us" (e.g. match home/away logic).
 const CHELSEA_TEAM_ID = 8455;
 
 const DIRECTION_TABS: { label: string; value: TransferDirection | "all" }[] = [
@@ -30,44 +29,6 @@ const TYPE_FILTER_OPTIONS: {
   { label: "Loan", value: "on_loan" },
 ];
 
-// TODO(backend): TransferQuery has no Season string param (unlike
-// MatchSearchQuery, which resolves "Season" via ISeasonService server-side).
-// Only dateFrom/dateTo exist, so seasons are mapped to date ranges here and
-// sent as dateFrom/dateTo. If a seasons lookup / ISeasonService equivalent
-// becomes available for transfers, replace this with a real season param.
-//
-// Mirrors appsettings.json's Seasons config (Code/Name/StartDate/EndDate).
-// Note the boundary is Aug 1 -> Aug 1, not the Jul 1 -> Jun 30 convention
-// used elsewhere — copy from appsettings.json, don't assume. Only 2025-26
-// and 2026-27 are configured server-side right now.
-//
-// TransferRepository.SearchAsync filters period_start >= dateFrom and
-// period_end <= dateTo (both inclusive), unlike MatchRepository's exclusive
-// toDate — using each season's EndDate as-is matches config values directly,
-// which is an acceptable one-day overlap at the season boundary.
-interface SeasonOption {
-  code: string;
-  label: string;
-  dateFrom: string;
-  dateTo: string;
-}
-
-const SEASON_OPTIONS: SeasonOption[] = [
-  { code: "all", label: "All Seasons", dateFrom: "", dateTo: "" },
-  {
-    code: "2025-26",
-    label: "2025/26",
-    dateFrom: "2025-08-01",
-    dateTo: "2026-08-01",
-  },
-  {
-    code: "2026-27",
-    label: "2026/27",
-    dateFrom: "2026-08-01",
-    dateTo: "2027-08-01",
-  },
-];
-
 function getDirection(transfer: TransferApiItem): TransferDirection {
   return transfer.toClubId === CHELSEA_TEAM_ID ? "in" : "out";
 }
@@ -83,6 +44,13 @@ function initials(name: string): string {
 }
 
 function TypeBadge({ transfer }: { transfer: TransferApiItem }) {
+  if (transfer.contractExtension) {
+    return (
+      <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-surface-container-highest text-on-surface-variant border border-outline-variant/50">
+        Contract Extension
+      </span>
+    );
+  }
   if (transfer.onLoan) {
     return (
       <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-surface-container-highest text-on-surface-variant border border-outline-variant/50">
@@ -158,22 +126,28 @@ export default function TransferPage() {
   const [transferType, setTransferType] = useState<
     "all" | "contract" | "on_loan"
   >("all");
-  const [season, setSeason] = useState(SEASON_OPTIONS[0].code);
+  const [season, setSeason] = useState("all");
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
-  const selectedSeason =
-    SEASON_OPTIONS.find((s) => s.code === season) ?? SEASON_OPTIONS[0];
+  const {
+    data: seasonsData,
+    isLoading: seasonsLoading,
+    isError: seasonsError,
+  } = useSeasons();
+  const seasonOptions = [
+    { code: "all", label: "All Seasons" },
+    ...(seasonsData?.data.map((item) => ({
+      code: item.code,
+      label: item.name,
+    })) ?? []),
+  ];
 
-  // Direction has no backend param (derived client-side from toClubId), so it
-  // isn't sent to the API. transferType maps directly to TransferQuery.TransferType.
-  // Season maps to dateFrom/dateTo (see SEASON_OPTIONS TODO above).
-  const { data, isLoading, isError, refetch } = useTransfers({
+  const { data, isLoading, isError } = useTransfers({
     page,
     pageSize,
+    season: season === "all" ? undefined : season,
     transferType: transferType === "all" ? undefined : transferType,
-    dateFrom: selectedSeason.dateFrom || undefined,
-    dateTo: selectedSeason.dateTo || undefined,
   });
 
   const filtered = useMemo(() => {
@@ -228,13 +202,14 @@ export default function TransferPage() {
           <div className="relative">
             <select
               value={season}
+              disabled={seasonsLoading || seasonsError}
               onChange={(e) => {
                 setSeason(e.target.value);
                 setPage(1);
               }}
               className="appearance-none bg-surface-container-low border border-outline-variant rounded pl-3 pr-8 py-1.5 text-body-sm font-body-sm text-on-surface focus:outline-none focus:border-primary transition-colors cursor-pointer"
             >
-              {SEASON_OPTIONS.map((opt) => (
+              {seasonOptions.map((opt) => (
                 <option
                   key={opt.code}
                   value={opt.code}

@@ -8,8 +8,6 @@ import { Formation, SubstitutesList } from "../components/match/Lineup";
 
 const OUR_TEAM_CODE = "CHE";
 
-// TODO(backend): same opponentCode gap noted in MatchHeader.tsx — using a
-// 3-char fallback for the breadcrumb until MatchResponse carries a real code.
 function fallbackCode(name: string): string {
   return name.slice(0, 3).toUpperCase();
 }

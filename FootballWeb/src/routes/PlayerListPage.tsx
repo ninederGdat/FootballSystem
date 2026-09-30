@@ -12,9 +12,6 @@ import { formatMarketValue } from "../lib/format";
 
 const PAGE_SIZE = 20;
 
-// Matches TransferService.MaptoStatus output ("current" | "loaned" | "transferred").
-// TODO(backend): PlayerSearchQuery has no transferStatus param yet, so this
-// filter is applied client-side against the current page only.
 type TransferStatusFilter = "all" | "current" | "loaned" | "transferred";
 
 const TRANSFER_FILTER_OPTIONS: {
@@ -36,10 +33,7 @@ function initials(name: string): string {
 export function PlayerListPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
-  // TODO(backend): mockup's Position filter is a broad category select
-  // (Goalkeeper/Defender/Midfielder/Forward), but PlayerSearchQuery only
-  // supports an exact positionCode (e.g. "LW", "CB"). Kept as a free-text
-  // code input until the backend exposes a category-level filter.
+
   const [positionCode, setPositionCode] = useState("");
   const [nationality, setNationality] = useState("");
   const [transferStatus, setTransferStatus] =

@@ -4,13 +4,6 @@ import { formatMatchDate, formatStatus } from "../../lib/format";
 const OUR_TEAM_NAME = "Chelsea";
 const OUR_TEAM_CODE = "CHE";
 
-// TODO(backend): MatchResponse carries no opponentCode field yet, so we
-// fall back to a 3-char truncation of the opponent name. This is wrong for
-// clubs whose real code doesn't match their first 3 letters (e.g.
-// "Manchester United" -> "MAN" here, but the real code is "MUN"). Fix by
-// adding opponentCode to MatchSummaryDTO/MatchClean once the ETL mapper
-// carries it through from Fotmob raw data. See MatchListPage.tsx for the
-// same TODO.
 function fallbackCode(name: string): string {
   return name.slice(0, 3).toUpperCase();
 }

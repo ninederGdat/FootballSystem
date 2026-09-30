@@ -19,7 +19,6 @@ public class TransferRepository : ITransferRepository
         return result.Models.ToList();
     }
 
-    // TODO(backend): The planned reconciliation job may insert system-generated rows; define a filter policy then.
     public async Task<IReadOnlyList<TransferClean>> GetTransfersByDateRangeAsync(
         long teamId,
         DateTime from,

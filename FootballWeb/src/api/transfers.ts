@@ -11,6 +11,7 @@ function buildQueryString(params: TransferQueryParams): string {
   if (params.page !== undefined) searchParams.set("page", String(params.page));
   if (params.pageSize !== undefined)
     searchParams.set("pageSize", String(params.pageSize));
+  if (params.season) searchParams.set("season", params.season);
   if (params.playerName) searchParams.set("playerName", params.playerName);
   if (params.playerId !== undefined)
     searchParams.set("playerId", String(params.playerId));

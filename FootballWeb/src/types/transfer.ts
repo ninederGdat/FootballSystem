@@ -41,6 +41,7 @@ export interface PagedResponse<T> {
 export interface TransferQueryParams {
   page?: number;
   pageSize?: number;
+  season?: string;
   playerName?: string;
   playerId?: number;
   fromClubId?: number;

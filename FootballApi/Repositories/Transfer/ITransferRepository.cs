@@ -5,6 +5,12 @@ namespace FootballApi.Repositories.Transfer;
 public interface ITransferRepository
 {
     Task<List<TransferClean>> GetTransfersByPlayerIdAsync(long playerId, CancellationToken ct = default);
+    Task<IReadOnlyList<TransferClean>> GetTransfersByDateRangeAsync(
+        long teamId,
+        DateTime from,
+        DateTime toExclusive,
+        bool? onLoan,
+        CancellationToken ct = default);
     Task<(IReadOnlyList<TransferClean> Items, int TotalCount)> SearchAsync(
     string playerName,
     long? playerId,

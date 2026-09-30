@@ -1,5 +1,6 @@
 using FootballApi.DTOs.Players;
 using FootballSystem.Shared.Infrastructure;
+using System.Globalization;
 
 namespace FootballApi.Repositories.Transfer;
 
@@ -16,6 +17,59 @@ public class TransferRepository : ITransferRepository
                                 .Where(x => x.PlayerId == playerId)
                                 .Get(ct);
         return result.Models.ToList();
+    }
+
+    // TODO(backend): The planned reconciliation job may insert system-generated rows; define a filter policy then.
+    public async Task<IReadOnlyList<TransferClean>> GetTransfersByDateRangeAsync(
+        long teamId,
+        DateTime from,
+        DateTime toExclusive,
+        bool? onLoan,
+        CancellationToken ct = default)
+    {
+        var incomingQuery = _client.From<TransferClean>()
+            .Filter("to_club_id", Supabase.Postgrest.Constants.Operator.Equals, teamId);
+        var outgoingQuery = _client.From<TransferClean>()
+            .Filter("from_club_id", Supabase.Postgrest.Constants.Operator.Equals, teamId);
+
+        ApplyDateAndLoanFilters(incomingQuery, from, toExclusive, onLoan);
+        ApplyDateAndLoanFilters(outgoingQuery, from, toExclusive, onLoan);
+
+        var incomingTask = incomingQuery.Get(ct);
+        var outgoingTask = outgoingQuery.Get(ct);
+        await Task.WhenAll(incomingTask, outgoingTask);
+
+        return incomingTask.Result.Models
+            .Concat(outgoingTask.Result.Models)
+            .GroupBy(x => x.Id)
+            .Select(group => group.First())
+            .OrderBy(x => x.TransferDate)
+            .ThenBy(x => x.Id)
+            .ToList();
+    }
+
+    private static void ApplyDateAndLoanFilters(
+        Supabase.Postgrest.Interfaces.IPostgrestTable<TransferClean> query,
+        DateTime from,
+        DateTime toExclusive,
+        bool? onLoan)
+    {
+        query.Filter(
+            "transfer_date",
+            Supabase.Postgrest.Constants.Operator.GreaterThanOrEqual,
+            from.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+        query.Filter(
+            "transfer_date",
+            Supabase.Postgrest.Constants.Operator.LessThan,
+            toExclusive.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+
+        if (onLoan is not null)
+        {
+            query.Filter(
+                "on_loan",
+                Supabase.Postgrest.Constants.Operator.Equals,
+                onLoan.Value ? "true" : "false");
+        }
     }
 
     public async Task<(IReadOnlyList<TransferClean> Items, int TotalCount)> SearchAsync(

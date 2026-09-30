@@ -7,7 +7,26 @@ namespace FootballApi.Services.Season;
 public interface ISeasonService
 {
     SeasonDefinition Resolve(string seasonCode);
+    SeasonDefinition ResolveCurrent(DateTime utcNow);
     IReadOnlyList<SeasonDefinition> GetAvailableSeasons();
+}
+
+public readonly record struct SeasonDateRange(DateTime? FromDate, DateTime? ToDateExclusive)
+{
+    public static SeasonDateRange Constrain(
+        SeasonDefinition season,
+        DateTime? fromDate = null,
+        DateTime? toDateExclusive = null)
+    {
+        var constrainedFrom = fromDate is null || fromDate.Value < season.StartDate
+            ? season.StartDate
+            : fromDate.Value;
+        var constrainedTo = toDateExclusive is null || toDateExclusive.Value > season.EndDate
+            ? season.EndDate
+            : toDateExclusive.Value;
+
+        return new SeasonDateRange(constrainedFrom, constrainedTo);
+    }
 }
 
 public sealed class SeasonResolver
@@ -38,6 +57,15 @@ public sealed class SeasonResolver
         return season;
     }
 
+    public SeasonDefinition ResolveCurrent(DateTime utcNow)
+    {
+        var season = _options.Seasons.FirstOrDefault(x =>
+            x.StartDate <= utcNow && utcNow < x.EndDate);
+
+        return season ?? throw new BadRequestException(
+            "No configured season contains the current UTC date.");
+    }
+
     public IReadOnlyList<SeasonDefinition> GetAvailableSeasons()
     {
         return _options.Seasons
@@ -64,5 +92,10 @@ public sealed class SeasonService : ISeasonService
     public SeasonDefinition Resolve(string seasonCode)
     {
         return _resolver.Resolve(seasonCode);
+    }
+
+    public SeasonDefinition ResolveCurrent(DateTime utcNow)
+    {
+        return _resolver.ResolveCurrent(utcNow);
     }
 }

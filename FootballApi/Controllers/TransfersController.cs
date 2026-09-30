@@ -40,4 +40,17 @@ public class TransfersController : ControllerBase
             }
         });
     }
+
+    [HttpGet("statistics")]
+    [ProducesResponseType(typeof(TransferStatisticsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<TransferStatisticsResponse>> GetStatistics(
+        [FromQuery] TransferStatisticsQuery query,
+        CancellationToken ct = default)
+    {
+        if (!ModelState.IsValid)
+            return ValidationProblem(ModelState);
+
+        return Ok(await _transferService.GetTransferStatisticsAsync(query, ct));
+    }
 }

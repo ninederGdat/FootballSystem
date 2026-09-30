@@ -3,6 +3,7 @@ using FootballApi.DTOs.Common;
 using FootballApi.DTOs.Players;
 using FootballApi.DTOs.Transfers;
 using FootballApi.Repositories.Player;
+using FootballApi.Repositories.Team;
 using FootballApi.Repositories.Transfer;
 using FootballApi.Services.Season;
 
@@ -14,18 +15,21 @@ namespace FootballApi.Services.Transfer
         private readonly IPlayerRepository _playerRepository;
         private readonly ILogger<TransferService> _logger;
         private readonly ISeasonService _seasonService;
+        private readonly ITeamRepository _teamRepository;
 
         public TransferService(
                ITransferRepository transferRepository,
                IPlayerRepository playerRepository,
                ILogger<TransferService> logger,
-               ISeasonService seasonService
+               ISeasonService seasonService,
+               ITeamRepository teamRepository
            )
         {
             _transferRepository = transferRepository;
             _playerRepository = playerRepository;
             _logger = logger;
             _seasonService = seasonService;
+            _teamRepository = teamRepository;
         }
 
         public async Task<PlayerTransferStatusResponse> GetPlayerTransferStatusAsync(long playerId, long teamId, CancellationToken ct)
@@ -83,8 +87,9 @@ namespace FootballApi.Services.Transfer
             if (!string.IsNullOrWhiteSpace(query.Season))
             {
                 var season = _seasonService.Resolve(query.Season);
-                fromDate = fromDate is null ? season.StartDate : fromDate.Value > season.StartDate ? fromDate.Value : season.StartDate;
-                toDate = toDate is null ? season.EndDate : toDate.Value < season.EndDate ? toDate.Value : season.EndDate;
+                var range = SeasonDateRange.Constrain(season, fromDate, toDate);
+                fromDate = range.FromDate;
+                toDate = range.ToDateExclusive;
             }
 
             var (transfers, totalCount) = await _transferRepository.SearchAsync(
@@ -131,6 +136,56 @@ namespace FootballApi.Services.Transfer
             {
                 Data = items
             }, totalCount);
+        }
+
+        public async Task<TransferStatisticsResponse> GetTransferStatisticsAsync(
+            TransferStatisticsQuery query,
+            CancellationToken ct)
+        {
+            var season = string.IsNullOrWhiteSpace(query.Season)
+                ? _seasonService.ResolveCurrent(DateTime.UtcNow)
+                : _seasonService.Resolve(query.Season);
+            var range = SeasonDateRange.Constrain(season);
+            var teamId = query.TeamId ?? 8455;
+            var team = await _teamRepository.GetByIdAsync(teamId, ct);
+
+            if (team is null)
+            {
+                return TransferStatisticsMapper.Map(
+                    teamId,
+                    string.Empty,
+                    season.Code,
+                    0m,
+                    0m,
+                    0,
+                    0,
+                    0,
+                    0);
+            }
+
+            var transfers = await _transferRepository.GetTransfersByDateRangeAsync(
+                teamId,
+                range.FromDate!.Value,
+                range.ToDateExclusive!.Value,
+                query.OnLoan,
+                ct);
+            var permanentBuys = transfers
+                .Where(x => x.ToClubId == teamId && !x.OnLoan)
+                .ToList();
+            var permanentSales = transfers
+                .Where(x => x.FromClubId == teamId && !x.OnLoan)
+                .ToList();
+
+            return TransferStatisticsMapper.Map(
+                teamId,
+                team.Name,
+                season.Code,
+                permanentBuys.Sum(x => x.FeeValue ?? 0m),
+                permanentSales.Sum(x => x.FeeValue ?? 0m),
+                permanentBuys.Count,
+                permanentSales.Count,
+                transfers.Count(x => x.ToClubId == teamId && x.OnLoan),
+                transfers.Count(x => x.FromClubId == teamId && x.OnLoan));
         }
 
 

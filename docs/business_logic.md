@@ -178,6 +178,7 @@ Implemented read routes include:
 - `GET /api/players` (filters: `search`, `teamId`, `positionCode`, `nationality`, `transferStatus`, `page`, `pageSize`), `GET /api/players/{playerId}`, and `GET /api/players/{playerId}/appearances`
 - `GET /api/competitions` and `GET /api/seasons`
 - `GET /api/transfers` (supports player, club, transfer-type, loan, contract-extension, date/season, and pagination filters)
+- `GET /api/transfers/statistics` (filters: `season`, `teamId`, `onLoan`)
 
 Season definitions come from the validated `Seasons` options. Match and transfer season filters constrain any supplied date range to the configured season boundaries.
 

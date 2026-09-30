@@ -3,6 +3,7 @@ import type {
   PagedResponse,
   TransferApiItem,
   TransferQueryParams,
+  TransferStatistics,
 } from "../types/transfer";
 
 function buildQueryString(params: TransferQueryParams): string {
@@ -38,5 +39,17 @@ export async function getTransfers(
   const qs = buildQueryString(params);
   return apiGet<PagedResponse<TransferApiItem>>(
     `/api/transfers${qs ? `?${qs}` : ""}`,
+  );
+}
+
+// GET /api/transfers/statistics — seasonal totals for a team.
+export function getTransferStatistics(
+  season: string,
+  signal?: AbortSignal,
+): Promise<TransferStatistics> {
+  return apiGet<TransferStatistics>(
+    "/api/transfers/statistics",
+    { season },
+    { signal },
   );
 }

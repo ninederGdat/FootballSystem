@@ -5,14 +5,18 @@ export function SectionCard({
   icon,
   right,
   children,
+  className,
 }: {
   title: string;
   icon?: string;
   right?: ReactNode;
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="overflow-hidden rounded border border-outline-variant bg-surface-container">
+    <div
+      className={`overflow-hidden rounded border border-outline-variant bg-surface-container ${className ?? ""}`}
+    >
       <div className="flex items-center justify-between border-b border-outline-variant bg-surface-container-high px-4 py-2.5">
         <div className="flex items-center gap-2 font-label-caps uppercase text-on-surface-variant">
           {icon && (

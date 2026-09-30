@@ -24,6 +24,19 @@ export interface TransferApiItem {
   fee: number | null;
 }
 
+export interface TransferStatistics {
+  teamId: number;
+  teamName: string;
+  season: string;
+  totalFeeToBuy: number;
+  totalFeeToSell: number;
+  netSpend: number;
+  permanentBuyCount: number;
+  permanentSellCount: number;
+  loanInCount: number;
+  loanOutCount: number;
+}
+
 // Mirrors PagedResponse<T> / PaginationMetadata from PagedResponse.cs
 export interface PaginationMetadata {
   page: number;

@@ -17,47 +17,57 @@ export function Formation({ lineup }: { lineup: LineupResponse | null }) {
     );
   }
 
+  const line = "rgba(255,255,255,0.3)";
+
   return (
     <div
-      className="relative overflow-hidden rounded"
+      className="relative mx-auto w-full overflow-hidden rounded"
       style={{
-        minHeight: 360,
+        aspectRatio: "105 / 68", // sân ngang
         backgroundColor: "#1a3c25",
         backgroundImage:
           "linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)",
         backgroundSize: "40px 40px",
       }}
     >
-      {/* Pitch markings */}
+      {/* Đường biên */}
       <div
-        className="pointer-events-none absolute inset-2 rounded"
-        style={{ border: "2px solid rgba(255,255,255,0.3)" }}
+        className="pointer-events-none absolute inset-2"
+        style={{ border: `2px solid ${line}` }}
+      />
+      {/* Đường giữa sân (dọc) */}
+      <div
+        className="pointer-events-none absolute bottom-2 left-1/2 top-2"
+        style={{ borderLeft: `2px solid ${line}` }}
+      />
+      {/* Vòng tròn giữa sân */}
+      <div
+        className="pointer-events-none absolute left-1/2 top-1/2 aspect-square h-[27%] -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{ border: `2px solid ${line}` }}
+      />
+      {/* Chấm giữa sân */}
+      <div
+        className="pointer-events-none absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{ backgroundColor: line }}
+      />
+      {/* Vòng cấm trái */}
+      <div
+        className="pointer-events-none absolute left-2 top-1/2 h-[59%] w-[16%] -translate-y-1/2"
+        style={{ border: `2px solid ${line}`, borderLeft: "none" }}
+      />
+      {/* Vòng cấm phải */}
+      <div
+        className="pointer-events-none absolute right-2 top-1/2 h-[59%] w-[16%] -translate-y-1/2"
+        style={{ border: `2px solid ${line}`, borderRight: "none" }}
+      />
+      {/* Chấm phạt đền */}
+      <div
+        className="pointer-events-none absolute top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full"
+        style={{ left: "11%", backgroundColor: line }}
       />
       <div
-        className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
-        style={{
-          width: 100,
-          height: 100,
-          border: "2px solid rgba(255,255,255,0.3)",
-        }}
-      />
-      <div
-        className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2"
-        style={{
-          width: "40%",
-          height: 60,
-          border: "2px solid rgba(255,255,255,0.3)",
-          borderTop: "none",
-        }}
-      />
-      <div
-        className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2"
-        style={{
-          width: "40%",
-          height: 60,
-          border: "2px solid rgba(255,255,255,0.3)",
-          borderBottom: "none",
-        }}
+        className="pointer-events-none absolute top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full"
+        style={{ right: "11%", backgroundColor: line }}
       />
 
       {lineup.starters.map((p) => (
@@ -68,10 +78,10 @@ export function Formation({ lineup }: { lineup: LineupResponse | null }) {
 }
 
 function FormationDot({ player }: { player: LineupPlayerResponse }) {
-  // customX/Y are 0..1 pitch-relative coordinates when present. Fall back to
-  // a centered spot so the UI degrades gracefully instead of piling every
-  // player at the same place.
   const hasCoords = player.customX !== null && player.customY !== null;
+
+  // x = chiều dài sân (GK ~0.1) -> left
+  // y = chiều ngang sân -> top
   const left = hasCoords ? `${(player.customX as number) * 100}%` : "50%";
   const top = hasCoords ? `${(player.customY as number) * 100}%` : "50%";
 
@@ -84,7 +94,7 @@ function FormationDot({ player }: { player: LineupPlayerResponse }) {
       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-container-highest font-data-mono text-on-surface shadow">
         {player.shirtNumber ?? "?"}
       </div>
-      <span className="mt-1 max-w-[72px] truncate text-center font-label-caps text-on-surface">
+      <span className="mt-1 max-w-[80px] truncate text-center font-label-caps text-on-surface">
         {player.playerName}
       </span>
     </div>

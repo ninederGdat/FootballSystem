@@ -17,18 +17,12 @@ A comprehensive football data management ecosystem designed to automate the coll
   - Tactical formations (`4-3-3`, `3-5-2`)
   - Player tactical roles (`Trequartista`, `Box-to-Box`, etc.)
 
-- **AI-Ready Infrastructure**  
-  Maintain high-quality historical data including:
-  - Market value
-  - Player status
-  - Performance metrics
-
-  to support future AI-driven scouting and performance analysis.
+- **Future AI Readiness**
+  Player market value, player status, transfer history, lineups, and match events provide source data for potential future analysis.
 
 - **Data Integrity**  
   Ensure consistency across the platform using:
-  - PostgreSQL constraints
-  - Database triggers
+  - PostgreSQL persistence through Supabase (deployed constraints must be verified separately)
   - Automated synchronization workflows
 
 ---
@@ -39,7 +33,7 @@ A comprehensive football data management ecosystem designed to automate the coll
 
 - **Primary Modules**
   - **Worker Service**: `FotmobSync` for ETL processing and background synchronization tasks
-  - **Minimal API**: `FootballApi` for frontend data delivery
+  - **ASP.NET Core controller API**: `FootballApi` for frontend data delivery
 
 - **Database**
   - PostgreSQL
@@ -47,7 +41,7 @@ A comprehensive football data management ecosystem designed to automate the coll
 
 - **Data Collection**
   - `HttpClient` for standard API endpoints
-  - `Playwright` for browser automation and Cloudflare Turnstile bypass
+  - `Playwright` for player-page extraction from `__NEXT_DATA__`
 
 - **Scheduling**
   - `Quartz.NET` for recurring synchronization jobs
@@ -74,29 +68,38 @@ The core synchronization engine responsible for the football data lifecycle.
 ### Folder Structure
 
 #### `Clients/`
+
 Contains:
+
 - Third-party API integrations
 - Browser scraping logic
 
 Example:
-- `FotmobBrowserClient.cs`
+
+- `FotmobClient.cs`; the player browser extractor is under `Infrastructure/External/`
 
 #### `Mappers/`
+
 Handles transformation logic that converts:
+
 - **Raw Models**
-→ into
+  → into
 - **Clean Models**
 
-that strictly follow the PostgreSQL schema.
+that map the FotMob payloads to Supabase table/upsert models. Deployed database constraints are not defined in this repository.
 
 #### `Jobs/`
+
 Contains:
+
 - Quartz.NET scheduled jobs
 - Daily synchronization workflows
 - Background processing tasks
 
 #### `Infrastructure/`
+
 Responsible for:
+
 - Supabase connection management
 - External service configuration
 - Shared infrastructure components
@@ -109,15 +112,15 @@ The interface layer that exposes cleaned football data to frontend clients.
 
 ### Features
 
-- Lightweight Minimal API endpoints
+- Controller-based read endpoints for matches, players, lineups, competitions, seasons, and transfers
 - Shared Supabase database access
 - Consistent data delivery layer
 
 ### Main Responsibilities
 
-- Team retrieval
 - Player retrieval
 - Match data delivery
+- Competition, season, and transfer queries
 - Tactical data exposure
 
 ---
@@ -131,6 +134,7 @@ The system organizes data into three primary domains.
 ## Master Data
 
 Includes:
+
 - Competitions
 - Formations
 - Positions
@@ -141,41 +145,60 @@ Includes:
 ## Core Entities
 
 ### Teams
+
 Stores:
+
 - Team metadata
 - Coaching information
 - Branding assets
 
 ### Players
+
 Stores:
+
 - Market value
 - Player status
 - Tactical metadata
 - AI-critical analysis fields
+- Injury description and transfer status
 
 ---
 
 ## Match & Lineup Domain
 
 ### Matches
+
 Stores:
+
 - Match schedules
 - Results
 - Opponent information
 
+### Match Events
+
+Stores mapped goals and cards with their source event payloads. Other event types are currently skipped by the sync mapper.
+
 ### Lineups
+
 Stores:
+
 - Tactical formations
 - Match-day squad selections
 
-### Lineup_players
+### `lineup_players`
+
 Maps:
+
 - Players
 - Tactical roles
 - Match positions
 - Playing time
 
 during a specific match.
+
+### Transfers
+
+Stores transfer history, loan periods, fees, and market values; the sync workflow also resolves player transfer status from the latest transfer record.
 
 ---
 
@@ -185,7 +208,6 @@ during a specific match.
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - [Supabase Account](https://supabase.com/) with a PostgreSQL instance
-- [Node.js](https://nodejs.org/) (required for Playwright installation)
 
 ---
 
@@ -205,18 +227,20 @@ Create an environment configuration file or configure OS-level environment varia
 ### Required Variables
 
 ```env
-SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_supabase_key
+Supabase__Url=your_supabase_url
+Supabase__AnonKey=your_supabase_anon_key
+Supabase__ServiceRoleKey=your_supabase_service_role_key
+Fotmob__XMasToken=your_fotmob_token
 ```
 
 ---
 
 ## Step 3 — Initialize Playwright
 
-Since the project uses Playwright for browser automation and scraper protection bypassing, install the required browser binaries.
+Since the player-detail extractor uses Playwright, install the required browser binaries from the worker project directory.
 
 ```bash
-cd src/FotmobSync
+cd FotmobSync
 dotnet build
 pwsh bin/Debug/net10.0/playwright.ps1 install
 ```
@@ -225,14 +249,7 @@ pwsh bin/Debug/net10.0/playwright.ps1 install
 
 ## Step 4 — Database Setup
 
-Run all SQL scripts located inside the `Schema/` folder using the Supabase SQL Editor.
-
-This initializes:
-- Tables
-- Constraints
-- Functions
-- Triggers
-- Cascade rules
+The repository currently contains no SQL schema scripts, migrations, triggers, or database functions. Confirm the deployed Supabase schema and its constraints separately before running the sync or API.
 
 ---
 
@@ -241,13 +258,13 @@ This initializes:
 ### Start the Synchronization Worker
 
 ```bash
-dotnet run --project src/FotmobSync
+dotnet run --project FotmobSync/FotmobSync.csproj
 ```
 
 ### Start the Web API
 
 ```bash
-dotnet run --project src/FootballApi
+dotnet run --project FootballApi/FootballApi.csproj
 ```
 
 ---
@@ -260,31 +277,16 @@ The platform executes a strict ETL pipeline.
 
 ## 1. Extract
 
-`FotmobClient` or `FotmobBrowserClient` retrieves:
-- Raw JSON
-- Raw HTML
-- Embedded page data
-
-from Fotmob sources.
+`FotmobClient` retrieves team and match-detail JSON from FotMob APIs. `FotmobBrowserClient` loads the player page and extracts `__NEXT_DATA__` from its HTML.
 
 ---
 
 ## 2. Transform
 
-`Mappers`:
-- Clean
-- Normalize
-- Validate
-
-incoming data into database-ready models.
+`Mappers` normalize supported raw fields into the clean/upsert models used by sync services.
 
 ---
 
 ## 3. Load
 
-Clean models are:
-- Upserted into Supabase
-- Validated by database constraints
-- Automatically timestamped via triggers
-
-to maintain referential integrity and synchronization consistency.
+Clean/upsert models are written to Supabase with the conflict targets used by the sync services. Database constraints and trigger behavior are not defined in the repository and must be verified against the deployed schema.

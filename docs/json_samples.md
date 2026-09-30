@@ -6,7 +6,7 @@ Documentation for raw JSON structures extracted from Fotmob used in the **Footba
 
 ## 1. Player Raw
 
-**Source**: Player detail page (`__NEXT_DATA__` → `pageProps.data`)
+**Source**: Player detail page. The browser client reads `props.pageProps.data` when its `id` matches; fallback is `props.pageProps.fallback["player:{playerId}"]`.
 
 **Purpose**: Contains detailed information about a player (or coach).
 
@@ -44,26 +44,19 @@ Documentation for raw JSON structures extracted from Fotmob used in the **Footba
       }
     ]
   },
-  "injuryInformation": null,
+  "injuryInformation": {
+    "key": "injury",
+    "name": "Hamstring injury",
+    "expectedReturn": {
+      "utcTime": "2026-10-20T00:00:00Z"
+    }
+  },
   "playerInformation": [
     {
       "title": "Shirt",
       "value": {
         "numberValue": 10
       }
-    },
-    {
-      "title": "Preferred foot",
-      "value": {
-        "key": "left"
-      }
-    },
-    {
-      "title": "Country",
-      "value": {
-        "fallback": "England"
-      },
-      "countryCode": "ENG"
     }
   ],
   "ccode": "ENG",
@@ -90,7 +83,7 @@ Documentation for raw JSON structures extracted from Fotmob used in the **Footba
 
 ## 2. Team Raw
 
-**Source**: Team detail endpoint
+**Source**: `GET /api/data/teams?id={teamId}&ccode3=VNM`
 
 **Purpose**: Team information and squad composition.
 
@@ -100,19 +93,17 @@ Documentation for raw JSON structures extracted from Fotmob used in the **Footba
     "id": 8455,
     "name": "Chelsea",
     "shortName": "Chelsea",
-    "logoUrl": "https://...",
-    "country": "England",
-    "ccode": "ENG"
+    "logo": "https://..."
   },
   "squad": {
-    "groups": [
+    "squad": [
       {
         "title": "Goalkeepers",
         "members": [
           {
             "id": 789571,
             "name": "Robert Sánchez",
-            "countryCode": "ESP",
+            "ccode": "ESP",
             "cname": "Spain"
           }
         ]
@@ -123,11 +114,14 @@ Documentation for raw JSON structures extracted from Fotmob used in the **Footba
           {
             "id": 1823023,
             "name": "Calum McFarlane",
-            "countryCode": "ENG"
+            "ccode": "ENG"
           }
         ]
       }
     ]
+  },
+  "transfers": {
+    "allTransfers": []
   }
 }
 ```
@@ -136,7 +130,7 @@ Documentation for raw JSON structures extracted from Fotmob used in the **Footba
 
 ## 3. Transfer Raw
 
-**Source**: Team detail endpoint → `transfers`
+**Source**: Team detail endpoint → `transfers.allTransfers[]` (`TeamRaw.Transfers.AllTransfers`)
 
 **Purpose**: Contains player transfer history associated with a team, including permanent transfers and loan movements.
 
@@ -154,12 +148,7 @@ The same transfer structure is used for both permanent transfers and loans. The 
   {
     "name": "Marc Cucurella",
     "playerId": 873289,
-    "position": {
-      "label": "LB",
-      "key": "leftback_short"
-    },
     "transferDate": "2026-06-15T09:22:32Z",
-    "transferText": ["To", 8633, "Real Madrid"],
     "fromClub": "Chelsea",
     "fromClubFullName": "Chelsea",
     "fromClubId": 8455,
@@ -185,12 +174,7 @@ The same transfer structure is used for both permanent transfers and loans. The 
   {
     "name": "Tyrique George",
     "playerId": 1424875,
-    "position": {
-      "label": "ST",
-      "key": "striker_short"
-    },
     "transferDate": "2026-02-02T22:15:51Z",
-    "transferText": ["To", 8668, "Everton"],
     "fromClub": "Chelsea",
     "fromClubFullName": "Chelsea",
     "fromClubId": 8455,
@@ -259,7 +243,7 @@ The same transfer structure is used for both permanent transfers and loans. The 
 
 ```json
 {
-  "matchId": "4813719",
+  "matchId": 4813719,
   "lineupType": "standard",
   "homeTeam": {
     "id": 8455,
@@ -270,7 +254,7 @@ The same transfer structure is used for both permanent transfers and loans. The 
       {
         "id": 789571,
         "name": "Robert Sánchez",
-        "shirtNumber": 1,
+        "shirtNumber": "1",
         "positionId": 11,
         "usualPlayingPositionId": 0,
         "countryName": "Spain",
@@ -299,7 +283,7 @@ The same transfer structure is used for both permanent transfers and loans. The 
       {
         "id": 1096400,
         "name": "Levi Colwill",
-        "shirtNumber": 6,
+        "shirtNumber": "6",
         "usualPlayingPositionId": 1,
         "marketValue": 62075967,
         "performance": {
@@ -330,7 +314,7 @@ The same transfer structure is used for both permanent transfers and loans. The 
     }
   },
   "awayTeam": {
-    "teamId": 10203,
+    "id": 10203,
     "name": "Nottingham Forest",
     "rating": 7.1,
     "formation": "4-2-3-1",
@@ -361,7 +345,7 @@ The same transfer structure is used for both permanent transfers and loans. The 
 {
   "id": 789571,
   "name": "Robert Sánchez",
-  "shirtNumber": 1,
+  "shirtNumber": "1",
   "positionId": 11,
   "usualPlayingPositionId": 0,
   "countryName": "Spain",
@@ -389,5 +373,33 @@ The same transfer structure is used for both permanent transfers and loans. The 
   }
 }
 ```
+
+---
+
+## 7. Match Event Raw
+
+**Source**: FotMob Match Detail API → `content.matchFacts.events.events[]`
+
+**Purpose**: Raw goal/card fields consumed by `MatchEventRaw` and `MatchEventMapper`. The sync preserves the complete event object in `raw_payload`; the mapper currently persists only goals and cards.
+
+```json
+{
+  "eventId": 918273645,
+  "type": "Goal",
+  "time": 90,
+  "overloadTime": 4,
+  "isHome": true,
+  "player": {
+    "id": 1096353,
+    "name": "Cole Palmer"
+  },
+  "ownGoal": false,
+  "goalDescriptionKey": "penalty",
+  "isPenaltyShootoutEvent": false,
+  "assistPlayerId": null
+}
+```
+
+Card events use the same common fields with `type: "Card"`, `card` (`"Yellow"`, `"YellowRed"`, or `"Red"`), and optional `cardDescription`; the goal-specific fields may be absent.
 
 ---

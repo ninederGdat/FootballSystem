@@ -1,10 +1,12 @@
 # FootballSystem Database Architecture
 
-Based on the current system architecture and SQL schema design, the `FootballSystem` database is built using:
+This page describes the table and column mappings in `FootballSystem.Shared/Models/Clean/*.cs` and how current services use them. No SQL scripts, EF migrations, or schema configuration are present in this repository, so database constraints and PostgreSQL types not declared by the models are listed as open questions rather than assumed.
+
+The `*Upsert` classes are write projections, not full table definitions: lineup/lineup-player/event/transfer upserts omit generated IDs, and event/transfer upserts also omit clean-model timestamps. `LineupPlayerUpsert.RoleId` is `long?` versus `int?` on `LineupPlayerClean`; `MatchEventUpsert.Minute` is nullable versus non-nullable on `MatchEventClean`; `TransferUpsert.ContractExtension` is nullable versus non-nullable on `TransferClean`.
 
 - PostgreSQL
 - Supabase hosting
-- Strong relational modeling
+- Relational identifiers used by application queries
 - Tactical football domain structures
 - Match event modeling
 - AI-ready extensibility
@@ -21,22 +23,24 @@ The schema is divided into three primary logical groups:
 
 These tables store foundational reference data shared across the entire system.
 
-| Table            | Fields                                                                       | Description                                                                                |
-| ---------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `competitions`   | `competition_id` (PK), `name`, `code`, `last_updated`                        | Stores tournament metadata such as Premier League or V-League.                             |
-| `positions`      | `position_code` (PK), `position_name`, `x_coord`, `y_coord`, `is_goalkeeper` | Defines tactical pitch positions with visual coordinates used for formation visualization. |
-| `position_roles` | `id` (PK), `position_code` (FK), `role_name`, `role_short`, `is_premium`     | Defines specialized tactical roles associated with each position.                          |
-| `formations`     | `id` (PK), `name`, `description`, `is_popular`                               | Stores tactical formations such as `4-3-3`, `4-2-3-1`, or `3-5-2`.                         |
+| Table            | Fields                                                                       | Description                                                      |
+| ---------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `competitions`   | `competition_id`, `name`, `code`, `last_updated`                             | Stores competition metadata.                                     |
+| `positions`      | `position_code`, `position_name`, `x_coord`, `y_coord`, `is_goalkeeper`      | Defines position names and formation coordinates.                |
+| `position_roles` | `id`, `position_code`, `role_name`, `role_short`, `is_premium`, `is_default` | Defines specialized and default roles associated with positions. |
+| `formations`     | `id`, `name`, `description`, `is_popular`                                    | Stores formations referenced when syncing lineups.               |
+
+The core entity and match tables are listed in their respective groups below.
 
 ## `competitions`
 
 ### Fields
 
 ```text
-competition_id (PK)
-name
-code (UNIQUE)
-last_updated
+competition_id: long (no `[PrimaryKey]` attribute)
+name: string
+code: string
+last_updated: DateTime
 ```
 
 ### Description
@@ -49,7 +53,7 @@ Examples:
 - UEFA Champions League
 - V-League
 
-The `code` field is unique and can be used as a stable competition identifier.
+`MatchService.EnsureCompetitionsAsync` currently sets `code` to the competition ID as text. The clean model does not declare a unique constraint.
 
 ---
 
@@ -58,11 +62,11 @@ The `code` field is unique and can be used as a stable competition identifier.
 ### Fields
 
 ```text
-position_code (PK)
-position_name
-x_coord
-y_coord
-is_goalkeeper
+position_code: string (no `[PrimaryKey]` attribute)
+position_name: string
+x_coord: double
+y_coord: double
+is_goalkeeper: bool
 ```
 
 ### Description
@@ -76,7 +80,7 @@ The coordinate fields are used for:
 - Tactical reconstruction
 - Match lineup rendering
 
-The table is referenced by both `players`, `position_roles`, and `lineup_players`.
+The API and sync code look up positions by `position_code`; players and lineup-player records also store that code. Foreign-key enforcement is not declared in the clean models.
 
 ---
 
@@ -85,11 +89,12 @@ The table is referenced by both `players`, `position_roles`, and `lineup_players
 ### Fields
 
 ```text
-id (PK)
-position_code (FK)
-role_name
-role_short
-is_premium
+id: int (`[PrimaryKey]`)
+position_code: string
+role_name: string
+role_short: string?
+is_premium: bool
+is_default: bool
 ```
 
 ### Relationships
@@ -114,9 +119,7 @@ CM
 └── Mezzala
 ```
 
-The combination of `position_code` and `role_name` is unique.
-
-This allows the system to distinguish between multiple tactical interpretations of the same base position.
+`PositionRoleClean` declares `id` as its primary key and maps `is_default`. The sync resolver loads default roles and resolves them by `position_code`. A uniqueness constraint on `(position_code, role_name)` is not declared in code.
 
 ---
 
@@ -125,10 +128,10 @@ This allows the system to distinguish between multiple tactical interpretations 
 ### Fields
 
 ```text
-id (PK)
-name (UNIQUE)
-description
-is_popular
+id: long (no `[PrimaryKey]` attribute)
+name: string
+description: string
+is_popular: bool
 ```
 
 ### Description
@@ -144,13 +147,19 @@ Examples:
 4-4-2
 ```
 
-Formations are referenced by the `lineups` table.
+The lineup sync looks up a formation by `name` and stores its ID in `lineups.formation_id`. The clean model does not declare a uniqueness constraint on `name`.
 
 ---
 
 # 2. Core Entities Group
 
 These tables manage the primary football entities within the system.
+
+| Table       | Fields                                                                                                                                                                                                                                                                                                                      | Description                         |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| `teams`     | `team_id`, `name`, `logo_url`, `coach_name`, `coach_nationality`                                                                                                                                                                                                                                                            | Team and coach metadata.            |
+| `players`   | `player_id`, `team_id`, `name`, `shirt_number`, `date_of_birth`, `nationality`, `contract_until`, `market_value`, `status`, `injury_description`, `created_at`, `last_updated`, `preferred_position_code`, `transfer_status`                                                                                                | Player profile and transfer status. |
+| `transfers` | `id`, `player_id`, `player_name`, `transfer_date`, `has_incomplete_timestamp`, `from_club_id`, `from_club_name`, `to_club_id`, `to_club_name`, `transfer_type`, `on_loan`, `contract_extension`, `fee_value`, `fee_text`, `market_value`, `period_start`, `period_end`, `is_system_generated`, `created_at`, `last_updated` | Transfer history and loan periods.  |
 
 ---
 
@@ -159,11 +168,11 @@ These tables manage the primary football entities within the system.
 ### Fields
 
 ```text
-team_id (PK)
-name
-logo_url
-coach_name
-coach_nationality
+team_id: long (no `[PrimaryKey]` attribute)
+name: string
+logo_url: string?
+coach_name: string?
+coach_nationality: string?
 ```
 
 ### Description
@@ -185,18 +194,20 @@ A team can have many players and matches.
 ### Fields
 
 ```text
-player_id (PK)
-team_id (FK)
-name
-shirt_number
-date_of_birth
-nationality
-contract_until
-market_value
-status
-created_at
-last_updated
-preferred_position_code (FK)
+player_id: long (no `[PrimaryKey]` attribute)
+team_id: long
+name: string
+shirt_number: int?
+date_of_birth: DateOnly?
+nationality: string?
+contract_until: DateOnly?
+market_value: decimal?
+status: string
+injury_description: string?
+created_at: DateTime
+last_updated: DateTime
+preferred_position_code: string?
+transfer_status: string
 ```
 
 ### Relationships
@@ -218,9 +229,7 @@ Linked to:
 
 Represents a football player and their current squad information.
 
-The `team_id` establishes the player's current team association.
-
-The `preferred_position_code` references the player's preferred tactical position.
+`PlayerClean` also maps `injury_description` and `transfer_status`. Player sync preserves an existing transfer status; transfer status is resolved separately from transfer history. The model does not declare the foreign keys shown by some application lookups.
 
 ### AI-Critical Fields
 
@@ -240,6 +249,37 @@ These can support:
 - AI-based player similarity
 - Player valuation analysis
 
+## `transfers`
+
+### Fields
+
+```text
+id: long (`[PrimaryKey]`)
+player_id: long
+player_name: string
+transfer_date: DateTime
+has_incomplete_timestamp: bool
+from_club_id: long
+from_club_name: string
+to_club_id: long
+to_club_name: string
+transfer_type: string
+on_loan: bool
+contract_extension: bool
+fee_value: decimal?
+fee_text: string?
+market_value: decimal?
+period_start: DateTime?
+period_end: DateTime?
+is_system_generated: bool
+created_at: DateTime
+last_updated: DateTime
+```
+
+### Description
+
+`TransferClean` maps the `transfers` table. Sync upserts with `(player_id, transfer_date, to_club_id)` as its conflict target; the corresponding database constraint is not declared in code.
+
 ---
 
 # 3. Match & Lineup Group
@@ -253,44 +293,29 @@ These tables manage operational football data, including matches, tactical lineu
 ### Fields
 
 ```text
-match_id (PK)
-team_id (FK)
-opponent_team_id
-opponent_name
-competition_id (FK)
-competition_name
-match_date
-home_or_away
-score_home
-score_away
-status
-last_updated
+match_id: long (no `[PrimaryKey]` attribute)
+team_id: long?
+opponent_team_id: long?
+opponent_name: string
+competition_id: long?
+competition_name: string?
+match_date: DateTime
+home_or_away: string?
+score_home: int?
+score_away: int?
+status: string
+last_updated: DateTime?
 ```
-
-### Relationships
-
-Linked to:
-
-- `teams` through `team_id`
-- `competitions` through `competition_id`
 
 ### Description
 
-Stores match schedules and historical match information for a tracked team.
-
-Stores:
-
-- Match schedules
-- Historical results
-- Opponent information
-- Competition metadata
-- Match status
+Stores schedules, results, opponent details, competition metadata, and status for the tracked team.
 
 ### Opponent Design
 
-`opponent_team_id` is currently stored as a plain `bigint` without a foreign key constraint.
+`MatchClean.OpponentTeamId` is nullable. Whether it has a database foreign key is not verifiable from the model.
 
-This is intentional because the system may synchronize matches where the opponent has not yet been imported into the `teams` table.
+Sync stores the opponent identifier and name from FotMob.
 
 Therefore:
 
@@ -302,7 +327,7 @@ matches
     └── opponent_team_id ─► External / optional team reference
 ```
 
-`opponent_name` is retained as a denormalized field so match data remains usable even when the opponent is not present in the local `teams` table.
+The API uses `opponent_name` for match search and display.
 
 ---
 
@@ -311,12 +336,12 @@ matches
 ### Fields
 
 ```text
-id (PK)
-type
-created_at
-updated_at
-formation_id (FK)
-match_id (FK, UNIQUE)
+id: long (`[PrimaryKey]`)
+match_id: long
+type: string
+formation_id: long?
+created_at: DateTime
+updated_at: DateTime
 ```
 
 ### Relationships
@@ -331,12 +356,12 @@ One Match
 
 ### Description
 
-Represents the official tactical lineup associated with a specific match.
+Represents the lineup type and formation fetched for a specific match.
 
-Each match owns at most one lineup record because:
+Sync upserts a lineup using `match_id` as the conflict target. The model does not establish whether that column is unique in the database:
 
 ```text
-UNIQUE (match_id)
+match_id (upsert conflict target)
 ```
 
 The lineup stores:
@@ -355,17 +380,17 @@ The `formation_id` references the tactical formation used by the lineup.
 ### Fields
 
 ```text
-id (PK)
-player_id (FK)
-position_code (FK)
-shirt_number
-is_starter
-minute_in
-minute_out
-custom_x
-custom_y
-lineup_id (FK)
-role_id (FK)
+id: long (`[PrimaryKey]`)
+lineup_id: long?
+player_id: long
+position_code: string?
+role_id: int? in `LineupPlayerClean`; long? in `LineupPlayerUpsert`
+shirt_number: int?
+is_starter: bool
+minute_in: int?
+minute_out: int?
+custom_x: double?
+custom_y: double?
 ```
 
 ### Description
@@ -441,20 +466,20 @@ This supports:
 ### Fields
 
 ```text
-id (PK)
-match_id (FK)
-fotmob_event_id (UNIQUE)
-event_type
-event_order
-minute
-stoppage_time
-team_id (FK, NULLABLE)
-player_id (FK, NULLABLE)
-assist_player_id (FK, NULLABLE)
-description_key
-raw_payload
-created_at
-last_updated
+id: long (`[PrimaryKey]`)
+match_id: long
+fotmob_event_id: long (upsert conflict target; uniqueness constraint unverified)
+event_type: string
+event_order: int
+minute: int in `MatchEventClean`; int? in `MatchEventUpsert`
+stoppage_time: int?
+team_id: long?
+player_id: long?
+assist_player_id: long?
+description_key: string?
+raw_payload: string
+created_at: DateTime
+last_updated: DateTime
 ```
 
 ### Description
@@ -463,33 +488,31 @@ Stores detailed events occurring during a football match.
 
 The table is designed to preserve both normalized event information and the original Fotmob payload.
 
-Supported event categories are determined by the application Mapper rather than a database enum or CHECK constraint.
+The clean model stores `event_type` as a string and the mapper emits the values below. Any database enum or CHECK constraint is not verifiable from this repository.
 
-Examples:
+Currently mapped event types are:
 
 ```text
 goal
-card_yellow
-card_red
+yellow
+yellow_red
+red
 own_goal
-added_time
 ```
 
-Additional event types can therefore be introduced without requiring a database migration.
+The mapper currently ignores event types other than FotMob `Goal` and `Card`; it does not map added-time or substitution events into `match_events`.
 
 ---
 
 ## Event Identification
 
-Each Fotmob event is identified using:
+The event sync upserts by `fotmob_event_id`; the model does not declare a unique constraint. `event_order` stores the source array index and is used as a stable tie-breaker in timeline reads.
 
 ```text
-fotmob_event_id (UNIQUE)
+fotmob_event_id (upsert conflict target)
 ```
 
-This allows the synchronization pipeline to identify existing events and avoid duplicate records.
-
-The `event_order` field preserves the ordering of events within a match.
+Duplicate prevention depends on the deployed database supporting the conflict target.
 
 ---
 
@@ -529,35 +552,19 @@ player_id
 assist_player_id
 ```
 
-They are intentionally nullable.
-
-This is particularly important for events such as:
-
-```text
-added_time
-```
-
-where there may be no specific player associated with the event.
-
-`team_id` uses:
-
-```text
-ON DELETE SET NULL
-```
-
-because an event may reference an opponent that has not been imported into the local `teams` table.
+These model fields are nullable. Sync assigns `team_id` only for the followed team and assigns player/assist IDs only when the referenced players exist locally; opponent names remain available in `raw_payload`.
 
 ---
 
 ## Raw Event Preservation
 
-The original Fotmob event payload is stored in:
+The event's serialized source JSON is stored in the model field:
 
 ```text
-raw_payload jsonb
+raw_payload (string in `MatchEventClean` and `MatchEventUpsert`)
 ```
 
-This provides a raw-data preservation layer for the ETL pipeline.
+The mapper assigns the original event JSON text to this field. The PostgreSQL column type is not declared in the repository.
 
 It allows the system to:
 
@@ -573,30 +580,21 @@ This is especially useful because the `event_type` is interpreted and validated 
 
 ## Match Event Performance
 
-A composite index is created for timeline-oriented queries:
-
-```sql
-CREATE INDEX idx_match_events_match_event
-ON public.match_events (match_id, event_type);
-```
-
-This optimizes queries that retrieve events for a match while filtering or grouping by event type.
-
-Typical use cases include:
+The API orders match events by `minute` and then `event_order`. No index definition is present in the repository.
 
 ```text
 Match Timeline
     │
     ├── Goals
-    ├── Yellow Cards
-    ├── Red Cards
+    ├── Cards
     ├── Own Goals
-    └── Added Time
 ```
 
 ---
 
 # 5. Entity Relationships
+
+The relationships below describe identifiers queried by application code. No database foreign-key or delete rules can be confirmed from the available clean models.
 
 ## Team → Players
 
@@ -648,7 +646,7 @@ The tracked team is represented by:
 matches.team_id
 ```
 
-Deleting a team cascades to its associated matches.
+The application does not implement team deletion; deployed database delete behavior is unknown.
 
 ---
 
@@ -660,12 +658,10 @@ One Match
     └──────────► One Lineup
 ```
 
-Each match owns at most one tactical lineup.
-
-This is enforced through:
+The API and sync code assume one lineup per match; the database uniqueness constraint is unverified.
 
 ```text
-UNIQUE (match_id)
+match_id (upsert conflict target; database uniqueness unverified)
 ```
 
 ---
@@ -719,9 +715,8 @@ Match
  │
  ├── Goal
  ├── Yellow Card
- ├── Substitution-related Event
  ├── Own Goal
- └── Added Time
+ └── Red Card
 ```
 
 The relationship is represented by:
@@ -758,183 +753,13 @@ assist_player_id
 
 # 6. Referential Integrity
 
-The database uses PostgreSQL foreign keys to maintain relational consistency.
-
-## ON DELETE CASCADE
-
-Deleting a team automatically removes dependent match records:
-
-```text
-Team
- │
- └──► Matches
-        │
-        ├──► Lineups
-        │      │
-        │      └──► LineupPlayers
-        │
-        └──► MatchEvents
-```
-
-Deleting a player automatically removes dependent:
-
-```text
-LineupPlayers
-MatchEvents
-```
-
-This prevents orphaned player participation and event records.
-
----
-
-## ON DELETE SET NULL
-
-Some relationships intentionally preserve the dependent record while removing the reference.
-
-### Match → Competition
-
-```text
-matches.competition_id
-        │
-        └── ON DELETE SET NULL
-```
-
-If a competition is deleted, the match remains available but its competition reference becomes `NULL`.
-
-### MatchEvent → Team
-
-```text
-match_events.team_id
-        │
-        └── ON DELETE SET NULL
-```
-
-This is particularly important when an event references an opponent that may not exist in the local `teams` table.
-
-### MatchEvent → Assist Player
-
-```text
-match_events.assist_player_id
-        │
-        └── ON DELETE SET NULL
-```
-
-The event remains available even if the assisting player's record is removed.
-
-### Lineup → Formation
-
-```text
-lineups.formation_id
-        │
-        └── ON DELETE SET NULL
-```
-
-The lineup remains available even if the referenced formation is removed.
-
-### Players → Preferred Position
-
-```text
-players.preferred_position_code
-        │
-        └── ON DELETE SET NULL
-```
-
-The player record remains available even if the preferred position is removed.
-
-### LineupPlayers → Role
-
-```text
-lineup_players.role_id
-        │
-        └── ON DELETE SET NULL
-```
-
-The lineup participation record remains available even if the tactical role is removed.
-
----
-
-## ON DELETE RESTRICT
-
-Position definitions are protected from deletion while they are referenced.
-
-The following relationships use `RESTRICT`:
-
-```text
-position_roles.position_code
-lineup_players.position_code
-players.preferred_position_code
-```
-
-The purpose is to prevent the removal of a position that is still required by tactical data.
+The clean models declare scalar ID columns, but no foreign-key attributes. Services and repositories query related records using identifiers; those code-level relationships do not prove database foreign keys or `ON DELETE` behavior. No SQL schema, migration, trigger, or function files are present in this repository, so the previous CASCADE, SET NULL, and RESTRICT claims cannot be verified here.
 
 ---
 
 # 7. Database Automation
 
-The database uses PostgreSQL automation features for timestamp maintenance.
-
-## Players
-
-The following field is automatically updated:
-
-```text
-players.last_updated
-```
-
-The trigger:
-
-```text
-trigger_players_last_updated
-```
-
-executes:
-
-```text
-update_players_last_updated()
-```
-
-before every update to a player.
-
-Application services therefore do not need to manually maintain this field.
-
----
-
-## Lineups
-
-The following field is automatically updated:
-
-```text
-lineups.updated_at
-```
-
-The trigger:
-
-```text
-trigger_lineups_updated_at
-```
-
-executes:
-
-```text
-update_lineups_updated_at()
-```
-
-before every update to a lineup.
-
----
-
-## Other Timestamp Fields
-
-The schema also contains:
-
-```text
-competitions.last_updated
-matches.last_updated
-match_events.last_updated
-created_at
-```
-
-These currently use PostgreSQL defaults where defined, but do not have the same automatic update triggers as `players.last_updated` and `lineups.updated_at`.
+The models expose timestamp columns, but database defaults and triggers are not declared in the code. `PlayerMapper`/`PlayerSyncService` set player timestamps and `LineupSyncService` sets lineup timestamps before upsert. Timestamp behavior for other records, and any deployed database-side automation, must be verified against the live schema.
 
 ---
 
@@ -1019,7 +844,7 @@ This allows efficient querying and analysis.
 The original Fotmob payload is preserved in:
 
 ```text
-raw_payload jsonb
+raw_payload: string in the clean/upsert models; PostgreSQL type unverified
 ```
 
 Therefore the system maintains both:
@@ -1043,66 +868,52 @@ This design makes the ETL pipeline more resilient to changes in the source API.
 
 # 10. ETL & Synchronization Architecture
 
-The database is designed to work with the FootballSystem synchronization pipeline.
+The mapped tables are populated by the FootballSystem synchronization pipeline.
 
 Current data flow:
 
 ```text
-Fotmob API
+FotMob team/match APIs and player page
     │
     ▼
-Extract
+Snapshots / extracted player JSON
     │
     ▼
-Raw Payload
+Mappers and sync services
     │
-    ▼
-Mapper
-    │
-    ├──► Player Data
-    ├──► Match Data
-    ├──► Lineup Data
-    └──► Match Event Data
+    ├──► Team, player, and transfer data
+    ├──► Match data
+    └──► Lineup and supported match-event data
             │
             ▼
-       Clean Models
+       Clean / upsert models
             │
             ▼
-   Supabase PostgreSQL
+          Supabase
             │
             ▼
-       Football API
+      FootballApi controllers
             │
-            ├──► Frontend
-            │
-            └──► AI Services
+            └──► Frontend clients
 ```
 
 For match events, the pipeline specifically follows:
 
 ```text
-Fotmob Match Events
-        │
-        ▼
-Parse / Extract
-        │
-        ▼
-Event Mapper
-        │
-        ├── event_type
-        ├── minute
-        ├── stoppage_time
-        ├── team_id
-        ├── player_id
-        └── assist_player_id
-        │
-        ▼
-match_events
-        │
-        └── raw_payload
+FotMob Match Detail `content.matchFacts.events.events[]`
+    │
+    ▼
+MatchEventMapper (Goal/Card only)
+    │
+    ├── event_type, minute, stoppage_time
+    ├── team_id, player_id, assist_player_id
+    └── description_key, raw_payload
+    │
+    ▼
+      match_events
 ```
 
-The Mapper is responsible for interpreting and validating `event_type`.
+`MatchEventMapper` currently maps FotMob Goal and Card records to `goal`, `own_goal`, `yellow`, `yellow_red`, or `red`; other event types are skipped.
 
 ---
 
@@ -1138,10 +949,10 @@ The existing relational structure provides the foundation for combining structur
 
 # 12. Architectural Summary
 
-The FootballSystem database emphasizes:
+The current application models and syncs:
 
 ```text
-Strong Relational Integrity
+Code-level identifiers and lookup relationships
           ↓
 Tactical Football Modeling
           ↓
@@ -1149,11 +960,11 @@ Match Event Modeling
           ↓
 Automated ETL Synchronization
           ↓
-PostgreSQL Automation
+Database constraints and automation require live-schema verification
           ↓
-Scalable Architecture
+Football API data delivery
           ↓
-AI Extensibility
+Potential future AI extensions
 ```
 
 The major domain layers are:
@@ -1170,7 +981,8 @@ Master Data
 Core Entities
     │
     ├── Teams
-    └── Players
+    ├── Players
+    └── Transfers
           │
           ▼
 Match & Tactical Data
@@ -1183,25 +995,14 @@ Match & Tactical Data
           ▼
 Football API
           │
-          ├──► Frontend
-          │
-          └──► AI Services
+          └──► Frontend
 ```
 
-The current schema prioritizes:
+The implementation models teams, players, transfers, match schedules, lineups, and supported match events. Database constraints, timestamp triggers, and PostgreSQL column types must be checked against the deployed schema.
 
-```text
-Consistency
-     ↓
-Tactical Accuracy
-     ↓
-Match Context
-     ↓
-Event Traceability
-     ↓
-Automation
-     ↓
-AI Readiness
-```
+---
 
-The introduction of `match_events` is an important extension of the original architecture because the system now models not only **who played and where they played**, but also **what happened during the match and when it happened**.
+# Open Questions
+
+- Verify deployed primary/foreign keys, PostgreSQL column types, timestamp defaults/triggers, and delete behavior; these are not defined by repository SQL or migrations.
+- Verify that deployed unique constraints exist for explicit sync conflict targets: `player_id` on `players`, `match_id` on `matches` and `lineups`, `(lineup_id, player_id)` on `lineup_players`, `fotmob_event_id` on `match_events`, and `(player_id, transfer_date, to_club_id)` on `transfers`.

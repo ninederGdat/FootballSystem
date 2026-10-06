@@ -24,26 +24,26 @@ public class MatchLineupWorkflow
         _logger = logger;
     }
 
-    public async Task ExecuteAsync(
-        int matchId,
-        int teamId)
+    public async Task<bool> ExecuteAsync(int matchId, int teamId)
     {
         var snapshot = await _matchModule.LoadAsync(matchId, teamId);
 
-
         var lineup = await _lineupSyncService.SyncAsync(snapshot);
+        if (lineup is null) return false;
 
-        if (lineup is null)
-            return;
+        var result = await _lineupPlayerSyncService.SyncAsync(snapshot, lineup.Id);
 
-        _logger.LogInformation("Syncing lineup players for match {MatchId}", matchId);
-        await _lineupPlayerSyncService.SyncAsync(
-                                    snapshot,
-                                    lineup.Id);
+        await _matchEventSyncService.SyncAsync(snapshot, matchId);
 
-       _logger.LogInformation("Syncing match events for match {MatchId}", matchId);
-        await _matchEventSyncService.SyncAsync(
-                                    snapshot,
-                                    matchId);
+        if (!result.IsComplete)
+        {
+            _logger.LogWarning(
+                "Match {MatchId}: lineup chưa đủ ({Starters}/11 starters).",
+                matchId, result.Starters);
+            return false;
+        }
+
+        await _lineupSyncService.MarkCompleteAsync(lineup.Id);
+        return true;
     }
 }

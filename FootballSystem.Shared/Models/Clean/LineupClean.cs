@@ -27,6 +27,8 @@ public class LineupClean : BaseModel
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     [Column("updated_at")]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    [Column("is_complete")]
+    public bool IsComplete { get; set; } = false;
 }
 
 

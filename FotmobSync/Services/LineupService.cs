@@ -97,6 +97,10 @@ public class LineupSyncService : ILineupSyncService
         return savedLineup;
     }
 
+    public async Task MarkCompleteAsync(long lineupId)
+    => await _supabase.From<LineupClean>()
+        .Where(x => x.Id == lineupId)
+        .Set(x => x.IsComplete, true)
+        .Update();
 
-    
 }

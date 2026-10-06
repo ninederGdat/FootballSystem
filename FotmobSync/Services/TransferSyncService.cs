@@ -4,6 +4,7 @@ using FotmobSync.Mappers;
 using FotmobSync.Modules;
 using FotmobSync.Services;
 using Supabase.Postgrest;
+using static FotmobSync.Workflows.ClubRefreshWorkflow;
 
 public class TransferSyncService
     : ITransferSyncService
@@ -23,53 +24,92 @@ public class TransferSyncService
         _logger = logger;
     }
 
-    public async Task SyncAsync(TeamDataSnapshot snapshot,
+    public Task SyncAsync(TeamDataSnapshot snapshot, CancellationToken cancellationToken = default)
+    => SyncAsync(new[] { snapshot }, cancellationToken);
+
+    public async Task SyncAsync(
+        IReadOnlyCollection<TeamDataSnapshot> snapshots,
         CancellationToken cancellationToken = default)
     {
-        var transfersRawList = snapshot.TeamRaw.Transfers.AllTransfers;
+        var all = new List<TransferClean>();
 
-        if (transfersRawList == null || transfersRawList.Count == 0)
+        foreach (var snapshot in snapshots)
         {
-            _logger.LogInformation("No transfer data found in snapshot, skipping transfer sync.");
-            return;
+            var raw = snapshot.TeamRaw?.Transfers?.AllTransfers;
+            if (raw == null || raw.Count == 0)
+            {
+                _logger.LogInformation("Team {TeamId}: no transfer data.", snapshot.TeamId);
+                continue;
+            }
+
+            var clean = raw.ToCleanList();
+            var skipped = raw.Count - clean.Count;
+            if (skipped > 0)
+                _logger.LogWarning(
+                    "Team {TeamId}: {Skipped} transfer record(s) skipped due to unparsable transferDate.",
+                    snapshot.TeamId, skipped);
+
+            all.AddRange(clean);
         }
 
-        var cleanList = transfersRawList.ToCleanList();
+        if (all.Count == 0) return;
 
-        // Log the number of skipped records due to unparsable transferDate
-        var skippedCount = transfersRawList.Count - cleanList.Count;
-        if (skippedCount > 0)
+        var merged = TransferMerger.Merge(all);
+        await AdoptExistingKeysAsync(merged);
+
+        // Chặn trùng khóa conflict ngay trong một batch
+        // (Postgres sẽ báo lỗi "cannot affect row a second time").
+        var unique = merged
+            .GroupBy(t => (t.PlayerId, t.TransferDate, t.ToClubId))
+            .Select(g => g.First())
+            .ToList();
+
+        foreach (var incomplete in unique.Where(t => t.HasIncompleteTimestamp))
         {
             _logger.LogWarning(
-                "{SkippedCount} transfer record(s) skipped due to unparsable transferDate.",
-                skippedCount);
-        }
-
-
-        foreach (var incomplete in cleanList.Where(c => c.HasIncompleteTimestamp))
-        {
-            _logger.LogWarning(
-                "Transfer for player {PlayerId} ({PlayerName}) has an incomplete timestamp (fromDate/toDate missing or partial).",
+                "Transfer for player {PlayerId} ({PlayerName}) has an incomplete timestamp.",
                 incomplete.PlayerId, incomplete.PlayerName);
         }
 
-        if (cleanList.Count == 0)
-        {
-            _logger.LogInformation("No valid transfer records to sync for team {TeamId}.", snapshot.TeamRaw?.Details?.Id);
-            return;
-        }
-
-        // Convert the list of TransferClean to a list of TransferUpsert for database insertion
-        var upsertList = cleanList.ToUpsertList();
-
         await _supabase
             .From<TransferUpsert>()
-            .Upsert(upsertList, new QueryOptions { OnConflict = OnConflictColumns });
+            .Upsert(unique.ToUpsertList(), new QueryOptions { OnConflict = OnConflictColumns });
 
         _logger.LogInformation(
-            "Synced {Count} transfer record(s) for team {TeamId}.",
-            upsertList.Count, snapshot.TeamRaw?.Details?.Id);
+            "Synced {Upserted} transfer(s) (raw {Raw}, after merge {Merged}).",
+            unique.Count, all.Count, merged.Count);
     }
+
+    private async Task AdoptExistingKeysAsync(List<TransferClean> merged)
+    {
+        var existing = new List<TransferClean>();
+
+        foreach (var chunk in merged.Select(t => t.PlayerId).Distinct().Chunk(100))
+        {
+            var res = await _supabase.From<TransferClean>()
+                .Filter("player_id", Constants.Operator.In,
+                        chunk.Select(x => (object)x).ToList())
+                .Get();
+            existing.AddRange(res.Models);
+        }
+
+        var byKey = existing
+            .Where(e => !e.IsSystemGenerated)
+            .ToLookup(e => (e.PlayerId, e.FromClubId, e.ToClubId, e.OnLoan));
+
+        foreach (var t in merged)
+        {
+            var match = byKey[(t.PlayerId, t.FromClubId, t.ToClubId, t.OnLoan)]
+                .Where(e => (e.TransferDate - t.TransferDate).Duration() <= TransferMerger.Window)
+                .OrderBy(e => e.Id)
+                .FirstOrDefault();
+
+            if (match != null)
+                t.TransferDate = match.TransferDate;   // giữ khóa cũ, tránh tạo dòng mới
+        }
+    }
+
+
 
 }
 

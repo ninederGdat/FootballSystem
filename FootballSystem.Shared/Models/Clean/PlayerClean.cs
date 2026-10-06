@@ -17,6 +17,8 @@ namespace FootballSystem.Shared.Models.Clean
         public long PlayerId { get; set; }                    // bigint PRIMARY KEY
         [Column("team_id")]
         public long TeamId { get; set; }                      // bigint, foreign key to teams
+        [Column("current_team_id")]
+        public long CurrentTeamId { get; set; }               // bigint, foreign key to teams
         [Column("name")]
         public string Name { get; set; } = string.Empty;      // text NOT NULL
         [Column("shirt_number")]
@@ -44,5 +46,7 @@ namespace FootballSystem.Shared.Models.Clean
         public string? PreferredPositionCode { get; set; }    // text, foreign key to positions
         [Column("transfer_status")]
         public string TransferStatus { get; set; } = "current"; // "current" | "loaned" | "transferred"
+        [Column("is_stub")]
+        public bool IsStub { get; set; } = false;             // boolean, true if this is a stub record (not fully populated)
     }
 }

@@ -17,17 +17,14 @@ public class FotmobSyncRunner : IFotmobSyncRunner
 
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
-        var teamsToSync = new[] { 8455 };
+        // 8455 - Chelsea FC
+        // 9848 - RC Strasbourg Alsace
+        var teamsToSync = new[] { 8455, 9848 };
 
-        foreach (var teamId in teamsToSync)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
+        cancellationToken.ThrowIfCancellationRequested();
 
-            _logger.LogInformation(
-                "Syncing team with ID {TeamId}",
-                teamId);
+        _logger.LogInformation("Syncing teams {TeamIds}", string.Join(",", teamsToSync));
 
-            await _workflow.ExecuteAsync(teamId);
-        }
+        await _workflow.ExecuteAsync(teamsToSync, cancellationToken);
     }
 }

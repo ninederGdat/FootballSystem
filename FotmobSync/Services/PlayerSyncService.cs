@@ -12,7 +12,6 @@ public class PlayerSyncService
     private readonly Supabase.Client _supabase;
     private readonly ILogger<PlayerSyncService> _logger;
 
-
     public PlayerSyncService(FotmobBrowserClient browserClient,
                              PositionService positionService,
                              SupabaseClientFactory factory,
@@ -25,9 +24,10 @@ public class PlayerSyncService
     }
 
 
-    public async Task SyncAsync(
+    public async Task<bool> SyncAsync(
     long playerId,
     long teamId,
+     bool useProfileTeam = false,
     CancellationToken cancellationToken = default)
     {
         try
@@ -39,22 +39,35 @@ public class PlayerSyncService
             if (playerRaw == null)
             {
                 _logger.LogWarning("Cannot get data for player {PlayerId}", playerId);
-                return;
+                return false;
             }
 
-            var playerClean = playerRaw.ToClean(teamId);
+
+            var profileTeamId = playerRaw.PrimaryTeam?.TeamId;   // đối chiếu tên/kiểu property trong PlayerRaw
+            var resolvedTeamId = useProfileTeam && profileTeamId.HasValue
+                ? profileTeamId.Value
+                : teamId;
+
+            var playerClean = playerRaw.ToClean(resolvedTeamId);
+            playerClean.IsStub = false;
 
             var existingPlayer = await LoadExistingPlayerAsync(playerClean.PlayerId);
 
             // If the player already exists, update it instead of inserting it.
             playerClean.TransferStatus = existingPlayer?.TransferStatus ?? playerClean.TransferStatus;
 
-            if (existingPlayer != null && IsPlayerPayloadUnchanged(playerClean, existingPlayer))
+            if (existingPlayer is { IsStub: false })
+            {
+                playerClean.TeamId = existingPlayer.TeamId;
+                playerClean.CurrentTeamId = existingPlayer.CurrentTeamId; // tránh bị upsert ghi null
+            }
+
+            if (existingPlayer is { IsStub: false } && IsPlayerPayloadUnchanged(playerClean, existingPlayer))
             {
                 _logger.LogInformation(
                     "Player {PlayerId} '{PlayerName}': không đổi, bỏ qua upsert.",
                     playerId, playerClean.Name);
-                return;
+                return true;
             }
 
             if (playerRaw.PositionDescription != null)
@@ -73,10 +86,12 @@ public class PlayerSyncService
 
             _logger.LogInformation("Player '{PlayerName}' (ID: {PlayerId}) synced successfully",
                 playerClean.Name, playerId);
+            return true;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error syncing player {PlayerId}", playerId);
+            return false;
         }
     }
 
@@ -88,6 +103,29 @@ public class PlayerSyncService
             .Get();
 
         return response.Models?.FirstOrDefault();
+    }
+
+
+
+    public async Task EnrichAsync(int batchSize = 10, CancellationToken cancellationToken = default)
+    {
+        var stubs = await _supabase.From<PlayerClean>()
+            .Filter("is_stub", Constants.Operator.Equals, "true")
+            .Order("last_updated", Constants.Ordering.Ascending)
+            .Limit(batchSize)
+            .Get();
+
+        foreach (var stub in stubs.Models)
+        {
+            var ok = await SyncAsync(stub.PlayerId, stub.TeamId, useProfileTeam: true);
+            if (!ok)   // đẩy xuống cuối hàng đợi để không kẹt ở một player lỗi
+                await _supabase.From<PlayerClean>()
+                    .Where(x => x.PlayerId == stub.PlayerId)
+                    .Set(x => x.LastUpdated, DateTime.UtcNow)
+                    .Update();
+
+            await Task.Delay(TimeSpan.FromSeconds(6));
+        }
     }
 
     private static bool IsPlayerPayloadUnchanged(PlayerClean incoming, PlayerClean existing)

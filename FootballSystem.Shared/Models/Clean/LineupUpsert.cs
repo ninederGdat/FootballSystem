@@ -17,3 +17,14 @@ public class LineupUpsert : BaseModel
     [Column("updated_at")]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
+
+[Table("lineup_sync_attempts")]
+public class LineupSyncAttemptClean : BaseModel
+{
+    [PrimaryKey("match_id", true)]
+    public long MatchId { get; set; }
+    [Column("attempts")]
+    public int Attempts { get; set; }
+    [Column("last_attempt_at")]
+    public DateTime LastAttemptAt { get; set; }
+}

@@ -8,109 +8,70 @@ public class TransferStatusResolver : ITransferStatusResolver
     public IReadOnlyList<PlayerTransferStatus> Resolve(
         IEnumerable<TransferClean> transfers,
         DateTime currentDate,
-        long teamId)
+         IReadOnlySet<long> trackedTeamIds)
     {
-        var transferHistory = transfers
-            .GroupBy(t => t.PlayerId)
-            .ToDictionary(
-                g => g.Key,
-                g => g
-                    .OrderByDescending(t => t.TransferDate)
-                    .ToList());
-
         var results = new List<PlayerTransferStatus>();
-
-        foreach (var (playerId, playerTransfers) in transferHistory)
+        foreach (var group in transfers
+          .Where(t => !t.ContractExtension)          // gia hạn hợp đồng không phải di chuyển
+          .GroupBy(t => t.PlayerId))
         {
-            var latestTransfer = playerTransfers[0];
+            var latest = group
+                .OrderByDescending(t => t.TransferDate)
+                .ThenBy(t => t.HasIncompleteTimestamp)
+                .ThenByDescending(t => t.Id)
+                .First();
 
-            var status = ResolveStatus(
-                latestTransfer,
-                currentDate,
-                teamId);
+            // Bỏ qua nếu không liên quan club tracked nào
+            if (!trackedTeamIds.Contains(latest.FromClubId) &&
+                !trackedTeamIds.Contains(latest.ToClubId))
+                continue;
 
-            results.Add(new PlayerTransferStatus
-            {
-                PlayerId = latestTransfer.PlayerId,
-                PlayerName = latestTransfer.PlayerName,
-                FromClubId = latestTransfer.FromClubId,
-                ToClubId = latestTransfer.ToClubId,
-                status = status
-            });
+            results.Add(ResolveOne(latest, currentDate, trackedTeamIds));
         }
 
         return results;
     }
 
-    /// <summary>
-    /// Resolves the transfer status based on the single latest transfer event
-    /// for a player.
-    /// </summary>
-    private static string ResolveStatus(
-        TransferClean latestTransfer,
-        DateTime currentDate,
-        long teamId)
+    private static PlayerTransferStatus ResolveOne(
+    TransferClean t, DateTime now, IReadOnlySet<long> tracked)
     {
-        /*
-         * Case 1:
-         * Latest event is the player returning to Chelsea.
-         *
-         * Example:
-         * Everton -> Chelsea
-         */
-        if (latestTransfer.ToClubId == teamId)
+        var fromTracked = tracked.Contains(t.FromClubId);
+        var toTracked = tracked.Contains(t.ToClubId);
+
+        // 1. Cho mượn đang hiệu lực
+        if (t.OnLoan && t.PeriodEnd > now)
         {
-            return "current";
+            return fromTracked
+                ? Build(t, parent: t.FromClubId, current: t.ToClubId, "loaned")
+                : Build(t, parent: t.ToClubId, current: t.ToClubId, "current"); // mượn từ club ngoài
         }
 
-        /*
-         * Case 2:
-         * Latest event is the player leaving Chelsea.
-         *
-         * Example:
-         * Chelsea -> Everton
-         */
-        if (latestTransfer.FromClubId == teamId)
+        // 2. Hết hạn mượn, chưa có sự kiện mới
+        //    Quy tắc đã xác nhận: về lại club chủ quản.
+        if (t.OnLoan)
         {
-            /*
-             * Loan
-             */
-            if (latestTransfer.OnLoan)
-            {
-                /*
-                 * Loan is still active.
-                 */
-                if (latestTransfer.PeriodEnd > currentDate)
-                {
-                    return "loaned";
-                }
-
-                /*
-                 * Loan has expired and no newer event (e.g. an explicit
-                 * "return from loan" transfer) exists yet in the history.
-                 *
-                 * Business rule (confirmed): an expired loan with no newer
-                 * event implies the player has rejoined Chelsea.
-                 */
-                return "current";
-            }
-
-            /*
-             * Permanent transfer.
-             */
-            if (latestTransfer.TransferType == "contract")
-            {
-                return "transferred";
-            }
+            return fromTracked
+                ? Build(t, parent: t.FromClubId, current: t.FromClubId, "current")
+                : Build(t, parent: t.ToClubId, current: t.ToClubId, "current"); // giữ hành vi cũ
         }
 
-        /*
-         * Fallback:
-         * Latest event doesn't cleanly match a known pattern
-         * (e.g. FromClubId/ToClubId neither is teamId — shouldn't happen
-         * since TransferSyncService only persists transfers touching
-         * teamId, but kept defensive).
-         */
-        return "current";
+        // 3. Chuyển nhượng vĩnh viễn
+        if (toTracked)                       // gia nhập hoặc chuyển nội bộ giữa 2 club tracked
+            return Build(t, parent: t.ToClubId, current: t.ToClubId, "current");
+
+        // Rời hẳn: giữ club tracked cuối cùng làm parent 
+        return Build(t, parent: t.FromClubId, current: t.ToClubId, "transferred");
     }
+
+    private static PlayerTransferStatus Build(
+        TransferClean t, long parent, long current, string status) => new()
+        {
+            PlayerId = t.PlayerId,
+            PlayerName = t.PlayerName,
+            FromClubId = t.FromClubId,
+            ToClubId = t.ToClubId,
+            ParentClubId = parent,
+            CurrentClubId = current,
+            status = status
+        };
 }

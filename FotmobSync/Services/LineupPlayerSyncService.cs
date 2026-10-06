@@ -13,6 +13,7 @@ public class LineupPlayerSyncService : ILineupPlayerSyncService
     private readonly IFotmobPositionMapper _positionMapper;
     private readonly IPositionRoleResolver _positionRoleResolver;
     private readonly IPlayingTimeResolver _playingTimeResolver;
+    private readonly IPlayerStubService _playerStubService;
     private readonly ILogger<LineupPlayerSyncService>
         _logger;
 
@@ -21,6 +22,7 @@ public class LineupPlayerSyncService : ILineupPlayerSyncService
         IFotmobPositionMapper positionMapper,
         IPositionRoleResolver positionRoleResolver,
         IPlayingTimeResolver playingTimeResolver,
+        IPlayerStubService playerStubService,
         ILogger<LineupPlayerSyncService> logger)
     {
         _supabase =
@@ -28,41 +30,32 @@ public class LineupPlayerSyncService : ILineupPlayerSyncService
         _positionMapper = positionMapper;
         _positionRoleResolver = positionRoleResolver;
         _playingTimeResolver = playingTimeResolver;
+        _playerStubService = playerStubService;
         _logger = logger;
     }
 
 
-    public async Task SyncAsync(
-        MatchDetailSnapshot snapshot,
-        long lineupId)
+    public async Task<LineupPlayerSyncResult> SyncAsync(MatchDetailSnapshot snapshot, long lineupId)
     {
         var team = GetTeam(snapshot);
-
-        if (team is null)
-            return;
+        if (team is null) return new(0, 0);
 
         var players = BuildPlayers(team).ToList();
+        if (players.Count == 0) return new(0, 0);
 
-        if (players.Count == 0)
-            return;
+        await _playerStubService.EnsureAsync(
+            players.Select(x => new PlayerStubInput(
+                x.Player.PlayerId, x.Player.Name, x.Player.CountryName,
+                ParseShirtNumber(x.Player.ShirtNumber), x.Player.MarketValue)),
+            snapshot.TeamId);
 
-        var existingIds = await GetExistingPlayerIdsAsync(players);
+        var entities = players.Select(x => CreateLineupPlayer(x, lineupId)).ToList();
+        await UpsertPlayersAsync(entities);   // thêm guard Count == 0
 
-        var entities = new List<LineupPlayerUpsert>();
-
-        foreach (var item in players)
-        {
-            var entity = CreateLineupPlayer(
-                item,
-                lineupId,
-                existingIds);
-
-            if (entity != null)
-                entities.Add(entity);
-        }
-
-        await UpsertPlayersAsync(entities);
+        return new(team.Starters.Count, players.Count);
     }
+
+
 
 
 
@@ -92,32 +85,19 @@ public class LineupPlayerSyncService : ILineupPlayerSyncService
     }
 
 
-    private LineupPlayerUpsert? CreateLineupPlayer(
-        (LineupPlayerRaw Player, bool IsStarter) item,
-        long lineupId,
-        HashSet<long> existingIds)
+    private LineupPlayerUpsert CreateLineupPlayer(
+     (LineupPlayerRaw Player, bool IsStarter) item,
+     long lineupId)
     {
         var p = item.Player;
 
-        if (!existingIds.Contains(p.PlayerId))
-        {
-            _logger.LogWarning(
-                "Player {PlayerId} not found.",
-                p.PlayerId);
-
-            return null;
-        }
-
         var positionCode = ResolvePositionCode(p);
-
         var roleId = ResolveRoleId(positionCode);
+        var playingTime = _playingTimeResolver.Resolve(p, item.IsStarter);
 
-        var playingTime =
-            _playingTimeResolver.Resolve(
-                p,
-                item.IsStarter);
+        LogPlayer(p, positionCode, roleId);
 
-        var entity = new LineupPlayerUpsert
+        return new LineupPlayerUpsert
         {
             LineupId = lineupId,
             PlayerId = p.PlayerId,
@@ -130,26 +110,15 @@ public class LineupPlayerSyncService : ILineupPlayerSyncService
             CustomX = p.HorizontalLayout?.X,
             CustomY = p.HorizontalLayout?.Y
         };
-
-        LogPlayer(
-            p,
-            positionCode,
-            roleId);
-
-        return entity;
     }
 
-    private async Task UpsertPlayersAsync(
-    ICollection<LineupPlayerUpsert> entities)
+    private async Task UpsertPlayersAsync(ICollection<LineupPlayerUpsert> entities)
     {
+        if (entities.Count == 0) return;
+
         await _supabase
             .From<LineupPlayerUpsert>()
-            .Upsert(
-                entities,
-                new()
-                {
-                    OnConflict = "lineup_id,player_id"
-                });
+            .Upsert(entities, new() { OnConflict = "lineup_id,player_id" });
     }
 
 

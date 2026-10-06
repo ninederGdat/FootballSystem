@@ -23,15 +23,16 @@ public class MatchService : IMatchSyncService
 
     private readonly Supabase.Client _supabase;
     private readonly ILogger<MatchService> _logger;
-    private readonly ILineupBackfillService _lineupBackfillService;
+    // private readonly ILineupBackfillService _lineupBackfillService;
 
     public MatchService(SupabaseClientFactory factory,
-                        ILogger<MatchService> logger,
-                        ILineupBackfillService  lineupBackfillService)
+                        ILogger<MatchService> logger
+                        // ILineupBackfillService lineupBackfillService
+                        )
     {
         _supabase = factory.CreateServiceRoleClient();
         _logger = logger;
-         _lineupBackfillService = lineupBackfillService;
+        // _lineupBackfillService = lineupBackfillService;
     }
 
     public List<MatchRaw> ExtractFixtures(TeamDataSnapshot snapshot)
@@ -126,7 +127,7 @@ public class MatchService : IMatchSyncService
                     skipped);
             }
 
-            await _lineupBackfillService.SyncMissingAsync(snapshot.TeamId);
+            // await _lineupBackfillService.SyncMissingAsync(snapshot.TeamId);
         }
         catch (Exception ex)
         {

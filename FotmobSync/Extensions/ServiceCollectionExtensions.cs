@@ -36,6 +36,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IMatchEventSyncService, MatchEventSyncService>();
         services.AddScoped<ITransferSyncService, TransferSyncService>();
         services.AddScoped<ITransferStatusSyncService, TransferStatusSyncService>();
+        services.AddScoped<IPlayerStubService, PlayerStubService>();
         // Lookup Services
         services.AddSingleton<FormationService>();
         services.AddSingleton<PositionService>();

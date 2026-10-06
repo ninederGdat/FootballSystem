@@ -16,43 +16,44 @@ public class SquadSyncService : ISquadSyncService
     }
 
     public async Task SyncAsync(
-     TeamDataSnapshot snapshot,
-     CancellationToken cancellationToken = default)
+        IReadOnlyCollection<TeamDataSnapshot> snapshots,
+        CancellationToken cancellationToken = default)
     {
-        var players = ExtractPlayers(snapshot);
+        var players = snapshots
+            .SelectMany(ExtractPlayers)
+            .GroupBy(p => p.PlayerId)
+            .Select(g => g.First())
+            .ToList();
+
+        _logger.LogInformation(
+            "Squad sync: {Count} distinct players from {Teams} teams.",
+            players.Count, snapshots.Count);
+
+        int ok = 0, failed = 0;
 
         foreach (var player in players)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            try
-            {
-                _logger.LogInformation(
-                    "Syncing player {PlayerId} - {PlayerName}",
-                    player.PlayerId,
-                    player.Name);
+            _logger.LogInformation(
+                "Syncing player {PlayerId} - {PlayerName}",
+                player.PlayerId, player.Name);
 
-                await _playerSyncService.SyncAsync(
-                    player.PlayerId,
-                    player.TeamId,
-                    cancellationToken);
+            var success = await _playerSyncService.SyncAsync(
+                player.PlayerId,
+                player.TeamId,
+                 useProfileTeam: false,
+                cancellationToken
+               );   // đổi thành true sau khi kiểm tra primaryTeam của cầu thủ cho mượn
 
-                await Task.Delay(
-                    TimeSpan.FromSeconds(6),
-                    cancellationToken);
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(
-                    ex,
-                    "Failed syncing player {PlayerId}",
-                    player.PlayerId);
-            }
+            if (success) ok++;
+            else failed++;
+
+            await Task.Delay(TimeSpan.FromSeconds(6), cancellationToken);
         }
+
+        _logger.LogInformation(
+            "Squad sync finished: {Ok} ok, {Failed} failed.", ok, failed);
     }
 
     private static List<SquadPlayerRef> ExtractPlayers(
@@ -74,4 +75,7 @@ public class SquadSyncService : ISquadSyncService
                 p.Name ?? string.Empty))
             .ToList();
     }
+
+    public Task SyncAsync(TeamDataSnapshot snapshot, CancellationToken cancellationToken = default)
+    => SyncAsync(new[] { snapshot }, cancellationToken);
 }

@@ -8,7 +8,7 @@ public interface ITransferStatusResolver
     IReadOnlyList<PlayerTransferStatus> Resolve(
         IEnumerable<TransferClean> transfers,
         DateTime currentDate,
-        long teamId
+        IReadOnlySet<long> trackedTeamIds
         );
 }
 

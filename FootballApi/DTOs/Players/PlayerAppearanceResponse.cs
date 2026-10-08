@@ -8,6 +8,8 @@ public class PlayerAppearanceResponse
     public string? CompetitionName { get; set; }
     public bool IsStarter { get; set; }
     public PlayerPositionResponse PositionPlayed { get; set; } = default!;
+    public PlayerTeamResponse? PlayedForTeam { get; set; }  // CLB cầu thủ khoác áo trong trận đó
+
     public long? RoleId { get; set; }
     public string? RoleName { get; set; }
     public string? RoleShort { get; set; }

@@ -10,9 +10,17 @@ export interface PlayerStatusDTO {
   injuryDescription: string | null;
 }
 
+// Backend PlayerRelation enum -> camelCase JSON values.
+export type PlayerRelation =
+  | "current"
+  | "loaned_in"
+  | "loaned_out"
+  | "transferred";
+
 export interface PlayerTeamDTO {
   teamId: number;
   teamName: string;
+  logoUrl: string | null;
 }
 
 export interface PlayerContractDTO {
@@ -51,21 +59,25 @@ export interface PlayerAppearanceDTO {
 export interface PlayerSummaryDTO {
   playerId: number;
   name: string;
-  teamName: string | null;
+  currentTeam: PlayerTeamDTO | null;
+  parentTeam: PlayerTeamDTO | null; // only when on loan
+  relation: PlayerRelation;
+  loanEndDate: string | null; // "YYYY-MM-DD", only when on loan
   positionCode: string | null;
   positionName: string | null;
   nationality: string | null;
   shirtNumber: number | null;
   age: number | null;
   status: string | null;
+  injuryDescription: string | null;
   marketValue: number | null;
-  transferStatus: string | null;
   contractUntil: string | null; // DateOnly -> "YYYY-MM-DD"
+  transferStatus: string | null; // raw DB value, informational only
 }
 
 export interface PlayerSearchQuery {
   search?: string;
-  teamId?: number;
+  teamId: number; // required by GET /api/players (400 when missing)
   positionCode?: string;
   nationality?: string;
   page?: number;

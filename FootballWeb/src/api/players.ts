@@ -34,6 +34,8 @@ export function searchPlayers(query: PlayerSearchQuery, signal?: AbortSignal) {
       teamId: query.teamId,
       positionCode: query.positionCode,
       nationality: query.nationality,
+      status: query.status,
+      transferStatus: query.transferStatus,
       page: query.page ?? 1,
       pageSize: query.pageSize ?? 20,
     },

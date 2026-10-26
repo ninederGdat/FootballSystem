@@ -7,6 +7,7 @@ using FootballApi.Repositories.Team;
 using FootballApi.Repositories.Transfer;
 using FootballApi.Services.Transfer;
 using FootballSystem.Shared.Models.Clean;
+using FootballSystem.Shared.Players;
 
 namespace FootballApi.Services.Player
 {
@@ -27,6 +28,7 @@ namespace FootballApi.Services.Player
         private readonly IPositionRoleRepository _positionRoleRepository;
         private readonly ILineupRepository _lineupRepository;
         private readonly ITransferService _transferService;
+        private readonly ITransferRepository _transferRepository;
         private readonly ILogger<PlayerService> _logger;
 
         public PlayerService(
@@ -36,6 +38,7 @@ namespace FootballApi.Services.Player
             IPositionRoleRepository positionRoleRepository,
             ILineupRepository lineupRepository,
             ITransferService transferService,
+            ITransferRepository transferRepository,
             ILogger<PlayerService> logger)
         {
             _playerRepository = playerRepository;
@@ -44,6 +47,7 @@ namespace FootballApi.Services.Player
             _positionRoleRepository = positionRoleRepository;
             _lineupRepository = lineupRepository;
             _transferService = transferService;
+            _transferRepository = transferRepository;
             _logger = logger;
         }
 
@@ -210,6 +214,7 @@ namespace FootballApi.Services.Player
                 query.TeamId,
                 query.PositionCode,
                 query.Nationality,
+                query.Status,
                 query.TransferStatus,
                 query.Page,
                 query.PageSize,
@@ -220,7 +225,10 @@ namespace FootballApi.Services.Player
                 return CreatePagedResponse(Array.Empty<PlayerSummaryResponse>(), query.Page, query.PageSize, totalCount);
             }
 
-            var teamIds = players.Select(p => p.TeamId).Distinct().ToList();
+            var teamIds = players
+                        .SelectMany(p => new[] { p.TeamId, p.CurrentTeamId })
+                        .Distinct()
+                        .ToList();
             var positionCodes = players
                 .Select(p => p.PreferredPositionCode)
                 .Where(c => c is not null)
@@ -229,42 +237,83 @@ namespace FootballApi.Services.Player
                 .ToList();
 
             var teamsTask = _teamRepository.GetByIdsAsync(teamIds, ct);
+
             var positionsTask = positionCodes.Count > 0
                 ? _positionRepository.GetByCodesAsync(positionCodes, ct)
                 : Task.FromResult(new List<PositionClean>());
 
-            await Task.WhenAll(teamsTask, positionsTask);
+            var transfersTask = _transferRepository.GetLatestByPlayerIdsAsync(
+                                                    players.Select(p => p.PlayerId), ct);
+
+            await Task.WhenAll(teamsTask, positionsTask, transfersTask);
+
+            var latestByPlayer = transfersTask.Result;
 
             var teamsById = teamsTask.Result.ToDictionary(t => t.TeamId, t => t);
             var positionsByCode = positionsTask.Result.ToDictionary(p => p.PositionCode, p => p);
 
             var items = players.Select(player =>
-            {
-                teamsById.TryGetValue(player.TeamId, out var team);
-                PositionClean? position = player.PreferredPositionCode is not null
-                    ? positionsByCode.GetValueOrDefault(player.PreferredPositionCode)
-                    : null;
-
-                return new PlayerSummaryResponse
                 {
-                    PlayerId = player.PlayerId,
-                    Name = player.Name,
-                    TeamName = team?.Name,
-                    PositionCode = player.PreferredPositionCode,
-                    PositionName = position?.PositionName,
-                    Nationality = player.Nationality,
-                    ShirtNumber = player.ShirtNumber,
-                    Age = CalculateAge(player.DateOfBirth),
-                    Status = player.Status,
-                    //Format "90.00"
-                    MarketValue = player.MarketValue is not null ? Math.Round(player.MarketValue.Value, 2) : null,
-                    ContractUntil = player.ContractUntil,
-                    TransferStatus = player.TransferStatus
-                };
-            }).ToList();
+                    teamsById.TryGetValue(player.TeamId, out var parentTeam);
+                    teamsById.TryGetValue(player.CurrentTeamId, out var currentTeam);
+                    latestByPlayer.TryGetValue(player.PlayerId, out var latest);
+
+                    PositionClean? position = player.PreferredPositionCode is not null
+                        ? positionsByCode.GetValueOrDefault(player.PreferredPositionCode)
+                        : null;
+
+
+                    // CLB hiện tại: ưu tiên bảng teams, nếu không có (CLB không theo dõi) thì lấy tên từ transfer
+                    PlayerTeamResponse? currentTeamDto =
+                        currentTeam is not null ? ToTeamDto(currentTeam)
+                        : latest is not null && latest.ToClubId == player.CurrentTeamId
+                            ? new PlayerTeamResponse
+                            {
+                                TeamId = latest.ToClubId,
+                                TeamName = latest.ToClubName,
+                                LogoUrl = null
+                            }
+                            : null;
+
+                    // Quan hệ so với CLB đang xem (query.TeamId), không phải player.TeamId
+                    var resolved = PlayerRelationResolver.Resolve(
+                        query.TeamId,
+                        player.TeamId,
+                        player.CurrentTeamId,
+                        player.TransferStatus);
+
+                    if (resolved is null)
+                        _logger.LogWarning(
+                            "Player {PlayerId} resolved to no relation for team {TeamId}.",
+                            player.PlayerId, query.TeamId);
+
+                    var relation = resolved ?? PlayerRelation.Current;
+                    var isLoan = relation is PlayerRelation.LoanedIn or PlayerRelation.LoanedOut;
+
+                    return new PlayerSummaryResponse
+                    {
+                        PlayerId = player.PlayerId,
+                        Name = player.Name,
+                        CurrentTeam = currentTeamDto,
+                        ParentTeam = isLoan && parentTeam is not null ? ToTeamDto(parentTeam) : null,
+                        Relation = relation,
+                        LoanEndDate = isLoan ? GetLoanEnd(latest) : null,
+                        PositionCode = player.PreferredPositionCode,
+                        PositionName = position?.PositionName,
+                        Nationality = player.Nationality,
+                        ShirtNumber = player.ShirtNumber,
+                        Age = CalculateAge(player.DateOfBirth),
+                        Status = player.Status,
+                        MarketValue = player.MarketValue is not null ? Math.Round(player.MarketValue.Value, 2) : null,
+                        ContractUntil = player.ContractUntil,
+                        TransferStatus = player.TransferStatus
+                    };
+                }).ToList();
 
             return CreatePagedResponse(items, query.Page, query.PageSize, totalCount);
         }
+
+
 
         private static PagedResponse<T> CreatePagedResponse<T>(
             IReadOnlyList<T> data, int page, int pageSize, int totalItems) => new()
@@ -296,7 +345,18 @@ namespace FootballApi.Services.Player
 
             return age;
         }
-    }
 
+        private static PlayerTeamResponse ToTeamDto(TeamClean team) => new()
+        {
+            TeamId = team.TeamId,
+            TeamName = team.Name,
+            LogoUrl = team.LogoUrl
+        };
+
+        private static DateOnly? GetLoanEnd(TransferClean? latest) =>
+            latest is { OnLoan: true, PeriodEnd: { } end }
+                ? DateOnly.FromDateTime(end)
+                : null;
+    }
 
 }

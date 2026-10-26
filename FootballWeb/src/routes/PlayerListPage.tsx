@@ -1,28 +1,21 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { usePlayerSearch } from "../features/players/hooks";
 import {
   LoadingState,
   ErrorState,
   EmptyState,
 } from "../components/common/States";
+import { LoanLine } from "../features/players/LoanLine";
+import { RelationBadge } from "../features/players/RelationBadge";
+import { FilterSelect } from "../features/players/FilterSelect";
+import { StatusPill } from "../features/players/StatusPill";
 import type { PlayerSummaryDTO } from "../types/player";
 import type { PaginationMetadata } from "../types/transfer";
 import { formatMarketValue } from "../lib/format";
 
+import { useContextTeam } from "../features/team-context/TeamContext";
 const PAGE_SIZE = 20;
-
-type TransferStatusFilter = "all" | "current" | "loaned" | "transferred";
-
-const TRANSFER_FILTER_OPTIONS: {
-  label: string;
-  value: TransferStatusFilter;
-}[] = [
-  { label: "All", value: "all" },
-  { label: "Current", value: "current" },
-  { label: "Loaned", value: "loaned" },
-  { label: "Transferred", value: "transferred" },
-];
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/);
@@ -32,32 +25,80 @@ function initials(name: string): string {
 
 export function PlayerListPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
 
   const [positionCode, setPositionCode] = useState("");
   const [nationality, setNationality] = useState("");
-  const [transferStatus, setTransferStatus] =
-    useState<TransferStatusFilter>("all");
   const [page, setPage] = useState(1);
+
+  const transferStatusParam = searchParams.get("transferStatus");
+  const transferStatus =
+    transferStatusParam === "current" ||
+    transferStatusParam === "loaned_in" ||
+    transferStatusParam === "loaned_out" ||
+    transferStatusParam === "transferred"
+      ? transferStatusParam
+      : undefined;
+
+  const statusParam = searchParams.get("status");
+  const normalized = statusParam?.toLowerCase();
+  const status =
+    normalized === "healthy"
+      ? "Healthy"
+      : normalized === "injured"
+        ? "Injured"
+        : undefined;
+
+  const { teamId: contextTeamId, team } = useContextTeam();
+
+  // Khi đổi CLB trong sidebar: về trang 1 và bỏ bộ lọc relation (bỏ qua lần mount đầu)
+  const prevTeamId = useRef(contextTeamId);
+  useEffect(() => {
+    if (prevTeamId.current === contextTeamId) return;
+    prevTeamId.current = contextTeamId;
+    setPage(1);
+    setSearchParams({}, { replace: true });
+  }, [contextTeamId, setSearchParams]);
 
   const { data, isLoading, error } = usePlayerSearch({
     search: search || undefined,
+    teamId: contextTeamId,
+    transferStatus,
+    status,
     positionCode: positionCode || undefined,
     nationality: nationality || undefined,
     page,
     pageSize: PAGE_SIZE,
   });
 
-  const items =
-    data && transferStatus !== "all"
-      ? data.data.filter((p) => p.transferStatus === transferStatus)
-      : (data?.data ?? []);
+  const items = data?.data ?? [];
+
+  function handleTransferStatusChange(value: string) {
+    const next = new URLSearchParams(searchParams);
+    if (value) next.set("transferStatus", value);
+    else next.delete("transferStatus");
+    setSearchParams(next);
+    setPage(1);
+  }
+
+  function handleStatusChange(value: string) {
+    const next = new URLSearchParams(searchParams);
+    if (value) next.set("status", value);
+    else next.delete("status");
+    setSearchParams(next);
+    setPage(1);
+  }
 
   return (
     <div className="mx-auto max-w-[1600px]">
       {/* Page header */}
       <div className="mb-gutter flex items-end justify-between">
         <div>
+          <div className="mb-2 inline-flex items-center gap-2 rounded border border-primary/30 bg-primary/10 px-2 py-0.5 font-label-caps text-[11px] uppercase tracking-wider text-primary">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+            {team.teamName} squad • {team.leagueName}
+          </div>
           <h1 className="font-display-lg text-on-surface">Players</h1>
           <p className="mt-2 font-body-md text-on-surface-variant">
             Squad overview and player information
@@ -103,33 +144,28 @@ export function PlayerListPage() {
             }}
             placeholder="e.g. ENG"
           />
-          <div className="flex items-center gap-2 rounded border border-outline-variant bg-surface-container-low p-1">
-            <span className="px-2 font-label-caps uppercase text-outline-variant">
-              TRANSFER
-            </span>
-            <div className="relative">
-              <select
-                value={transferStatus}
-                onChange={(e) =>
-                  setTransferStatus(e.target.value as TransferStatusFilter)
-                }
-                className="cursor-pointer appearance-none border-none bg-transparent py-1 pl-2 pr-8 font-body-sm text-on-surface focus:ring-0"
-              >
-                {TRANSFER_FILTER_OPTIONS.map((opt) => (
-                  <option
-                    key={opt.value}
-                    value={opt.value}
-                    className="bg-surface-container-low text-on-surface"
-                  >
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              <span className="material-symbols-outlined pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[16px] text-outline-variant">
-                expand_more
-              </span>
-            </div>
-          </div>
+          <FilterSelect
+            label="STATUS"
+            value={status ?? ""}
+            onChange={handleStatusChange}
+            options={[
+              { value: "", label: "All Statuses" },
+              { value: "Healthy", label: "Active" },
+              { value: "Injured", label: "Injured" },
+            ]}
+          />
+          <FilterSelect
+            label="RELATION"
+            value={transferStatus ?? ""}
+            onChange={handleTransferStatusChange}
+            options={[
+              { value: "", label: "Default" },
+              { value: "current", label: "Current" },
+              { value: "loaned_in", label: "Loaned in" },
+              { value: "loaned_out", label: "Loaned out" },
+              { value: "transferred", label: "Transferred" },
+            ]}
+          />
         </div>
       </div>
 
@@ -171,7 +207,7 @@ export function PlayerListPage() {
                     Value
                   </th>
                   <th className="w-32 px-4 py-3 font-label-caps uppercase text-on-surface-variant">
-                    Transfer
+                    Relation
                   </th>
                   <th className="w-24 px-4 py-3 text-right font-label-caps uppercase text-on-surface-variant">
                     Contract
@@ -223,35 +259,6 @@ function FilterField({
   );
 }
 
-function TransferBadge({
-  status,
-}: {
-  status: PlayerSummaryDTO["transferStatus"];
-}) {
-  if (status === "current") {
-    return (
-      <span className="inline-flex items-center rounded bg-primary/10 border border-primary/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
-        Current
-      </span>
-    );
-  }
-  if (status === "loaned") {
-    return (
-      <span className="inline-flex items-center rounded bg-secondary-container/30 border border-outline-variant px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-on-secondary-container">
-        Loaned
-      </span>
-    );
-  }
-  if (status === "transferred") {
-    return (
-      <span className="inline-flex items-center rounded bg-error-container/20 border border-error/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-error">
-        Transferred
-      </span>
-    );
-  }
-  return <span className="text-on-surface-variant">-</span>;
-}
-
 function PlayerRow({
   player,
   onClick,
@@ -275,6 +282,7 @@ function PlayerRow({
           </div>
           <span className="font-semibold text-on-surface">{player.name}</span>
         </div>
+        <LoanLine player={player} />
       </td>
       <td className="px-4 py-2 font-data-mono text-on-surface-variant">
         {player.positionCode ?? "-"}
@@ -285,8 +293,8 @@ function PlayerRow({
       <td className="px-4 py-2 text-right font-data-mono text-on-surface-variant">
         {player.age != null ? player.age : "-"}
       </td>
-      <td className="px-4 py-2 text-on-surface-variant">
-        {player.status ?? "-"}
+      <td className="px-4 py-2">
+        <StatusPill status={player.status} injury={player.injuryDescription} />
       </td>
       <td className="px-4 py-2 text-right text-on-surface-variant">
         {player.marketValue != null
@@ -294,10 +302,10 @@ function PlayerRow({
           : "-"}
       </td>
       <td className="px-4 py-2">
-        <TransferBadge status={player.transferStatus} />
+        <RelationBadge relation={player.relation} />
       </td>
       <td className="px-4 py-2 text-right text-on-surface-variant">
-        {player.contractUntil ?? "-"}
+        {player.contractUntil ? player.contractUntil.slice(0, 4) : "-"}
       </td>
     </tr>
   );

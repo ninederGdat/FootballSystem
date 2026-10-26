@@ -1,4 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
+import { ClubSwitcher } from "../../features/team-context/ClubSwitcher";
+import { TeamContextProvider } from "../../features/team-context/TeamContext";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: "dashboard" },
@@ -8,6 +10,14 @@ const navItems = [
 ];
 
 export function AppShell() {
+  return (
+    <TeamContextProvider>
+      <AppShellLayout />
+    </TeamContextProvider>
+  );
+}
+
+function AppShellLayout() {
   return (
     <div className="flex min-h-screen md:flex-row">
       {/* Sidebar */}
@@ -40,6 +50,9 @@ export function AppShell() {
             </NavLink>
           ))}
         </nav>
+        <div className="border-t border-outline-variant p-4">
+          <ClubSwitcher />
+        </div>
       </aside>
 
       {/* Main column */}

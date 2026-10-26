@@ -80,6 +80,8 @@ export interface PlayerSearchQuery {
   teamId: number; // required by GET /api/players (400 when missing)
   positionCode?: string;
   nationality?: string;
+  status?: "Healthy" | "Injured"; // DB values are capitalized; omitted = no status filter
+  transferStatus?: PlayerRelation; // current | loaned_in | loaned_out | transferred
   page?: number;
   pageSize?: number;
 }

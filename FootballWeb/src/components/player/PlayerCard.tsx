@@ -15,7 +15,7 @@ export function PlayerCard({ player }: { player: PlayerSummaryDTO }) {
         <p className="truncate text-xs text-ink-muted">
           {[
             player.positionName,
-            player.teamName,
+            player.currentTeam?.teamName,
             player.nationality,
             player.age?.toString(),
           ]

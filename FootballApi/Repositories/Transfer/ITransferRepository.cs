@@ -22,4 +22,7 @@ public interface ITransferRepository
     DateTime? dateFrom,
     DateTime? dateTo,
     int page, int pageSize, CancellationToken ct);
+
+    Task<Dictionary<long, TransferClean>> GetLatestByPlayerIdsAsync(IEnumerable<long> playerIds,
+                                                                CancellationToken ct = default);
 }

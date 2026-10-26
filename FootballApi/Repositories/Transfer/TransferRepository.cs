@@ -119,4 +119,22 @@ public class TransferRepository : ITransferRepository
 
         return (result.Models, totalCount);
     }
+
+    public async Task<Dictionary<long, TransferClean>> GetLatestByPlayerIdsAsync(
+    IEnumerable<long> playerIds, CancellationToken ct = default)
+    {
+        var ids = playerIds.Distinct().ToList();
+        if (ids.Count == 0) return new Dictionary<long, TransferClean>();
+
+        var result = await _client.From<TransferClean>()
+            .Filter("player_id", Supabase.Postgrest.Constants.Operator.In, ids)
+            .Order("transfer_date", Supabase.Postgrest.Constants.Ordering.Descending)
+            .Order("id", Supabase.Postgrest.Constants.Ordering.Descending)
+            .Get(ct);
+
+        // Mới nhất theo transfer_date, id là tie-breaker
+        return result.Models
+            .GroupBy(x => x.PlayerId)
+            .ToDictionary(g => g.Key, g => g.First());
+    }
 }

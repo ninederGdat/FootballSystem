@@ -48,6 +48,9 @@ Documentation for raw JSON structures extracted from Fotmob used in the **Footba
     "key": "injury",
     "name": "Hamstring injury",
     "expectedReturn": {
+      "expectedReturnFallback": "Doubtful"
+    },
+    "lastUpdated": {
       "utcTime": "2026-10-20T00:00:00Z"
     }
   },

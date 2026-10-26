@@ -102,7 +102,6 @@ namespace FotmobSync.Models.Raw
         [JsonPropertyName("teamId")]
         public int TeamId { get; set; }
     }
-
     /// <summary>Fotmob player injury payload when the player is injured.</summary>
     public class InjuryInformationRaw
     {
@@ -112,9 +111,20 @@ namespace FotmobSync.Models.Raw
         [JsonPropertyName("name")]
         public string? Name { get; set; }
 
-        /// <summary>ISO date string and/or <c>{ "utcTime": "..." }</c> (Fotmob date shapes).</summary>
+        /// <summary>
+        /// Shapes seen from Fotmob:
+        /// <c>{ "expectedReturnFallback": "Doubtful" }</c> (no date known),
+        /// <c>{ "utcTime": "..." }</c> (date known), or a plain ISO date string.
+        /// </summary>
         [JsonPropertyName("expectedReturn")]
         public JsonElement? ExpectedReturn { get; set; }
+
+        /// <summary>
+        /// <c>{ "utcTime": "..." }</c>: when Fotmob last updated this injury record.
+        /// This is NOT the return date; the mapper does not use it.
+        /// </summary>
+        [JsonPropertyName("lastUpdated")]
+        public JsonElement? LastUpdated { get; set; }
     }
 
     public class PlayerInformationRaw

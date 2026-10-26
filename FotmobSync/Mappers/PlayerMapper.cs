@@ -66,8 +66,9 @@ public static class PlayerMapper
     }
 
     /// <summary>
-    /// Fotmob: <see cref="PlayerRaw.InjuryInformation"/> null → Healthy; otherwise Injured with
-    /// <c>{name} (Expected return: {expectedReturn})</c> on <see cref="PlayerClean.InjuryDescription"/>.
+    /// Fotmob: <see cref="PlayerRaw.InjuryInformation"/> null → Healthy; otherwise Injured.
+    /// Description is "{name} (Expected return: {value})", where value is a date or Fotmob's
+    /// fallback text (e.g. "Doubtful"). The "(Expected return: ...)" part is omitted when empty.
     /// </summary>
     private static (string Status, string? InjuryDescription) MapPlayerStatus(PlayerRaw raw)
     {
@@ -76,7 +77,22 @@ public static class PlayerMapper
 
         var name = raw.InjuryInformation.Name?.Trim() ?? string.Empty;
         var expectedReturn = FormatExpectedReturn(raw.InjuryInformation.ExpectedReturn);
-        return ("Injured", $"{name} (Expected return: {expectedReturn})");
+
+        return ("Injured", BuildInjuryDescription(name, expectedReturn));
+    }
+
+    private static string? BuildInjuryDescription(string name, string expectedReturn)
+    {
+        var hasName = name.Length > 0;
+        var hasReturn = expectedReturn.Length > 0;
+
+        return (hasName, hasReturn) switch
+        {
+            (true, true) => $"{name} (Expected return: {expectedReturn})",
+            (true, false) => name,
+            (false, true) => $"Expected return: {expectedReturn}",
+            _ => null
+        };
     }
 
     private static string FormatExpectedReturn(JsonElement? expectedReturn)
@@ -85,17 +101,40 @@ public static class PlayerMapper
             expectedReturn.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
             return string.Empty;
 
-        if (expectedReturn.Value.ValueKind == JsonValueKind.String)
-            return NormalizeReturnDateText(expectedReturn.Value.GetString());
+        var value = expectedReturn.Value;
 
-        if (expectedReturn.Value.ValueKind == JsonValueKind.Object &&
-            expectedReturn.Value.TryGetProperty("utcTime", out var utc) &&
-            utc.ValueKind == JsonValueKind.String)
+        switch (value.ValueKind)
         {
-            return NormalizeReturnDateText(utc.GetString());
+            case JsonValueKind.String:
+                return NormalizeReturnDateText(value.GetString());
+
+            case JsonValueKind.Object:
+                // A concrete date wins over the fallback text when both are present
+                if (TryGetNonEmptyString(value, "utcTime", out var utc))
+                    return NormalizeReturnDateText(utc);
+
+                if (TryGetNonEmptyString(value, "expectedReturnFallback", out var fallback))
+                    return fallback.Trim();
+
+                return string.Empty;
+
+            default:
+                return string.Empty;
+        }
+    }
+
+    private static bool TryGetNonEmptyString(JsonElement obj, string property, out string value)
+    {
+        if (obj.TryGetProperty(property, out var element) &&
+            element.ValueKind == JsonValueKind.String &&
+            !string.IsNullOrWhiteSpace(element.GetString()))
+        {
+            value = element.GetString()!;
+            return true;
         }
 
-        return string.Empty;
+        value = string.Empty;
+        return false;
     }
 
     private static string NormalizeReturnDateText(string? utcTime)

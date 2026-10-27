@@ -41,4 +41,8 @@ public static class PlayerRelationResolver
 
         return null;
     }
+
+    public static bool IsOnLoan(long teamId, long? currentTeamId, string? transferStatus) =>
+    string.Equals(transferStatus, LoanedStatus, StringComparison.OrdinalIgnoreCase)
+    && (currentTeamId ?? teamId) != teamId;
 }

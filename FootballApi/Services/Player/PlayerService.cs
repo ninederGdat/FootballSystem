@@ -65,34 +65,42 @@ namespace FootballApi.Services.Player
                 throw new PlayerNotFoundException(id);
             }
 
-            var teamTask = _teamRepository.GetByIdAsync(player.TeamId, ct);
+            var teamIds = new List<long> { player.TeamId, player.CurrentTeamId }.Distinct().ToList();
+            var teamsTask = _teamRepository.GetByIdsAsync(teamIds, ct);
 
             // Skip database access if the player has no preferred position.
             var positionTask = player.PreferredPositionCode is not null
                 ? _positionRepository.GetByCodesAsync(new List<string> { player.PreferredPositionCode }, ct)
                 : Task.FromResult(new List<PositionClean>());
 
-            var transferTask = _transferService.GetPlayerTransferStatusAsync(player.PlayerId, player.TeamId, ct);
-            if (transferTask is null)
-            {
-                _logger.LogWarning("Player {PlayerId} not found.", id);
-                transferTask = Task.FromResult(new PlayerTransferStatusResponse());
-            }
+            var transfersTask = _transferRepository.GetLatestByPlayerIdsAsync(new[] { id }, ct);
+
             // Fire both independent database queries in parallel.
             // This reduces total latency compared to awaiting them sequentially.
-            await Task.WhenAll(teamTask, positionTask, transferTask);
+            await Task.WhenAll(teamsTask, positionTask, transfersTask);
 
+            var teamsById = teamsTask.Result.ToDictionary(t => t.TeamId);
             var position = positionTask.Result.FirstOrDefault();
-            var status = transferTask.Result;
-            return MapToProfileDto(player, teamTask.Result, position, status);
+            transfersTask.Result.TryGetValue(id, out var latestTransfer);
+
+            return MapToProfileDto(player, teamsById, position, latestTransfer);
         }
 
         /// <summary>
         /// Converts domain models into the API response DTO.
         /// No business logic should be added here.
         /// </summary>
-        private static PlayerProfileResponse MapToProfileDto(PlayerClean player, TeamClean? team, PositionClean? position, PlayerTransferStatusResponse? status)
+        private static PlayerProfileResponse MapToProfileDto(PlayerClean player, IReadOnlyDictionary<long, TeamClean> teamsById,
+                                                            PositionClean? position, TransferClean? latestTransfer)
         {
+            var isOnLoan = PlayerRelationResolver.IsOnLoan(
+       player.TeamId, player.CurrentTeamId, player.TransferStatus);
+
+            var currentTeam = ResolveTeam(player.CurrentTeamId, teamsById, latestTransfer);
+            var parentTeam = isOnLoan ? ResolveTeam(player.TeamId, teamsById, null) : null;
+            var loanEnd = isOnLoan ? GetLoanEnd(latestTransfer) : null;
+
+
             return new PlayerProfileResponse
             {
                 PlayerId = player.PlayerId,
@@ -106,11 +114,9 @@ namespace FootballApi.Services.Player
                     InjuryDescription = player.InjuryDescription
                 },
 
-                CurrentTeam = team is null ? null : new PlayerTeamResponse
-                {
-                    TeamId = (int)team.TeamId,
-                    TeamName = team.Name
-                },
+                CurrentTeam = currentTeam,
+                ParentTeam = parentTeam,
+                LoanEndDate = loanEnd,
                 PreferredPosition = position is null ? null : new PlayerPositionResponse
                 {
                     PositionCode = position.PositionCode,
@@ -121,11 +127,11 @@ namespace FootballApi.Services.Player
                     ContractUntil = player.ContractUntil,
                     MarketValue = player.MarketValue
                 },
-                TransferStatus = status is null ? null : new PlayerTransferStatusResponse
+                TransferStatus = new PlayerTransferStatusResponse
                 {
-                    Status = status.Status,
-                    CurrentTeam = status.CurrentTeam,
-                    PeriodEnd = status.PeriodEnd
+                    Status = player.TransferStatus,
+                    CurrentTeam = currentTeam?.TeamName ?? string.Empty,
+                    PeriodEnd = loanEnd
                 }
             };
         }
@@ -357,6 +363,23 @@ namespace FootballApi.Services.Player
             latest is { OnLoan: true, PeriodEnd: { } end }
                 ? DateOnly.FromDateTime(end)
                 : null;
+
+        // CLB theo dõi lấy từ bảng teams; CLB không theo dõi lấy tên từ transfer mới nhất
+        private static PlayerTeamResponse? ResolveTeam(
+            long teamId,
+            IReadOnlyDictionary<long, TeamClean> teamsById,
+            TransferClean? latest)
+        {
+            if (teamsById.TryGetValue(teamId, out var team))
+                return new PlayerTeamResponse { TeamId = team.TeamId, TeamName = team.Name, LogoUrl = team.LogoUrl };
+
+            if (latest is not null && latest.ToClubId == teamId)
+                return new PlayerTeamResponse { TeamId = latest.ToClubId, TeamName = latest.ToClubName, LogoUrl = null };
+
+            return null;
+        }
     }
+
+
 
 }

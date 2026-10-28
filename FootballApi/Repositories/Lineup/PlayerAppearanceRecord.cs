@@ -6,6 +6,7 @@ public class PlayerAppearanceRecord
     public DateTime MatchDate { get; set; }
     public string? OpponentName { get; set; }
     public string? CompetitionName { get; set; }
+    public long? PlayedForTeamId { get; set; }
     public bool IsStarter { get; set; }
     public string? PositionCode { get; set; }
     public int? RoleId { get; set; }

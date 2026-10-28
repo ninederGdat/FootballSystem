@@ -135,6 +135,7 @@ public class LineupRepository : ILineupRepository
                 MatchDate = match?.MatchDate ?? default,
                 OpponentName = match?.OpponentName,
                 CompetitionName = match?.CompetitionName,
+                PlayedForTeamId = match?.TeamId,
                 IsStarter = lp.IsStarter,
                 PositionCode = lp.PositionCode,
                 RoleId = lp.RoleId,

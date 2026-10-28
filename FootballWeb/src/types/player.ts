@@ -37,12 +37,22 @@ export interface PlayerProfileDTO {
   status: PlayerStatusDTO;
   currentTeam: PlayerTeamDTO | null;
   preferredPosition: PlayerPositionDTO | null;
+  parentTeam: PlayerTeamDTO | null; // only when on loan; the owning club
+  loanEndDate: string | null; // "YYYY-MM-DD", only when on loan
+  transferStatus?: PlayerTransferStatusDTO | null; // informational only, never rendered
   contract: PlayerContractDTO;
+}
+
+export interface PlayerTransferStatusDTO {
+  currentTeam: string;
+  status: string;
+  periodEnd: string | null;
 }
 
 export interface PlayerAppearanceDTO {
   matchId: number;
   matchDate: string;
+  playedForTeam: PlayerTeamDTO | null;
   opponentName: string | null;
   competitionName: string | null;
   isStarter: boolean;

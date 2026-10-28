@@ -1,6 +1,7 @@
 import type { PlayerAppearanceDTO } from "../../types/player";
 import { formatMatchDate, formatMinuteRange } from "../../lib/format";
 import { EmptyState } from "../../components/common/States";
+import { ClubCell } from "./ClubCell";
 
 export function AppearanceList({
   appearances,
@@ -26,6 +27,9 @@ export function AppearanceList({
             </th>
             <th className="font-label-caps text-label-caps text-on-surface-variant uppercase p-3">
               Competition
+            </th>
+            <th className="font-label-caps text-label-caps text-on-surface-variant uppercase p-3">
+              Club
             </th>
             <th className="font-label-caps text-label-caps text-on-surface-variant uppercase p-3">
               Opponent
@@ -55,6 +59,9 @@ export function AppearanceList({
               </td>
               <td className="p-3 text-on-surface-variant">
                 {a.competitionName ?? "—"}
+              </td>
+              <td className="p-3">
+                <ClubCell team={a.playedForTeam} />
               </td>
               <td className="p-3 font-body-sm text-body-sm text-on-surface">
                 {a.opponentName ?? "—"}

@@ -165,11 +165,22 @@ namespace FootballApi.Services.Player
                 ? _positionRoleRepository.GetByIdsAsync(roleIds, ct)
                 : Task.FromResult(new List<PositionRoleClean>());
 
-            await Task.WhenAll(positionsTask, rolesTask);
+            var playedForTeamIds = raw.Items
+                .Where(i => i.PlayedForTeamId.HasValue)
+                .Select(i => i.PlayedForTeamId!.Value)
+                .Distinct()
+                .ToList();
+
+            var teamsTask = playedForTeamIds.Count > 0
+                            ? _teamRepository.GetByIdsAsync(playedForTeamIds, ct)
+                            : Task.FromResult(new List<TeamClean>());
+
+            await Task.WhenAll(positionsTask, rolesTask, teamsTask);
 
             // Convert lookup data into dictionaries for O(1) access during mapping.
             var positionsByCode = positionsTask.Result.ToDictionary(p => p.PositionCode, p => p);
             var rolesById = rolesTask.Result.ToDictionary(r => r.Id, r => r);
+            var teamsById = teamsTask.Result.ToDictionary(t => t.TeamId, t => t);
 
             var appearances = raw.Items.Select(item =>
             {
@@ -184,6 +195,9 @@ namespace FootballApi.Services.Player
                     OpponentName = item.OpponentName,
                     CompetitionName = item.CompetitionName,
                     IsStarter = item.IsStarter,
+                    PlayedForTeam = item.PlayedForTeamId.HasValue && teamsById.TryGetValue(item.PlayedForTeamId.Value, out var playedFor)
+                                                                                ? ToTeamDto(playedFor)
+                                                                                : null,
                     PositionPlayed = new PlayerPositionResponse
                     {
                         PositionCode = position?.PositionCode

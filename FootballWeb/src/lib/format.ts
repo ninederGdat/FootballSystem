@@ -26,6 +26,15 @@ export function formatMinuteRange(
   return `${inStr}' – ${outStr}${typeof outStr === "number" ? "'" : ""}`;
 }
 
+export function formatLoanDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 export function formatStatus(status: string): string {
   const map: Record<string, string> = {
     FINISHED: "FT",

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { usePlayer, usePlayerAppearances } from "../features/players/hooks";
 import { AppearanceList } from "../components/player/AppearanceList";
+import { ProfileLoanLine } from "../features/players/ProfileLoanLine";
 import { Pagination } from "../components/common/Pagination";
 import { LoadingState, ErrorState } from "../components/common/States";
 import { formatMarketValue } from "../lib/format";
@@ -66,6 +67,11 @@ export function PlayerDetailPage() {
                   </>
                 )}
               </div>
+              <ProfileLoanLine
+                currentTeam={player.currentTeam}
+                parentTeam={player.parentTeam}
+                loanEndDate={player.loanEndDate}
+              />
             </div>
           </div>
           <div className="flex gap-6 text-right">

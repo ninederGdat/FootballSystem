@@ -59,3 +59,20 @@ export function formatMarketValue(value: number | null | undefined): string {
   }
   return `€${value.toLocaleString()}`;
 }
+
+// Derives age from a DateOnly ISO string ("YYYY-MM-DD"). No year is
+// stored on PlayerProfileDTO, so this mirrors the backend PlayerSummary
+// age without adding an API field.
+export function formatAge(dobIso: string | null): string {
+  if (!dobIso) return "—";
+  const dob = new Date(dobIso);
+  if (Number.isNaN(dob.getTime())) return "—";
+  const now = new Date();
+  let age = now.getUTCFullYear() - dob.getUTCFullYear();
+  const beforeBirthday =
+    now.getUTCMonth() < dob.getUTCMonth() ||
+    (now.getUTCMonth() === dob.getUTCMonth() &&
+      now.getUTCDate() < dob.getUTCDate());
+  if (beforeBirthday) age -= 1;
+  return age > 0 ? String(age) : "—";
+}

@@ -12,9 +12,14 @@ export function ProfileLoanLine({
 }) {
   if (!parentTeam || !currentTeam) return null;
   return (
-    <p className="mt-1 font-body-sm text-body-sm text-on-surface-variant">
-      On loan at {currentTeam.teamName} from {parentTeam.teamName} until{" "}
-      {loanEndDate ? formatLoanDate(loanEndDate) : "unknown date"}
-    </p>
+    <div className="inline-flex items-center gap-1.5 text-secondary font-body-sm text-body-sm pt-0.5">
+      <span className="material-symbols-outlined text-[16px] text-primary">
+        sync_alt
+      </span>
+      <span>
+        On loan at {currentTeam.teamName} from {parentTeam.teamName} until{" "}
+        {loanEndDate ? formatLoanDate(loanEndDate) : "unknown date"}
+      </span>
+    </div>
   );
 }

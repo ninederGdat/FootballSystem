@@ -1,19 +1,20 @@
 import type { MatchResponse } from "../../types/match";
 import { formatMatchDate, formatStatus } from "../../lib/format";
-
-const OUR_TEAM_NAME = "Chelsea";
-const OUR_TEAM_CODE = "CHE";
+import { getTrackedTeam } from "../../lib/teams";
 
 function fallbackCode(name: string): string {
   return name.slice(0, 3).toUpperCase();
 }
 
 export function MatchHeader({ match }: { match: MatchResponse }) {
+  const ours = match.teamId != null ? getTrackedTeam(match.teamId) : undefined;
+  const ourName = ours?.teamName ?? "Unknown";
+  const ourCode = ours?.abbr ?? "UNK";
   const isHome = match.homeOrAway === "home";
-  const homeName = isHome ? OUR_TEAM_NAME : match.opponentName;
-  const awayName = isHome ? match.opponentName : OUR_TEAM_NAME;
-  const homeCode = isHome ? OUR_TEAM_CODE : fallbackCode(match.opponentName);
-  const awayCode = isHome ? fallbackCode(match.opponentName) : OUR_TEAM_CODE;
+  const homeName = isHome ? ourName : match.opponentName;
+  const awayName = isHome ? match.opponentName : ourName;
+  const homeCode = isHome ? ourCode : fallbackCode(match.opponentName);
+  const awayCode = isHome ? fallbackCode(match.opponentName) : ourCode;
   const homeScore = isHome ? match.scoreHome : match.scoreAway;
   const awayScore = isHome ? match.scoreAway : match.scoreHome;
 

@@ -72,6 +72,7 @@ export type MatchStatus = "UPCOMING" | "live" | "FINISHED" | "cancelled";
 export interface MatchSummaryDTO {
   matchId: number;
   opponentName: string;
+  teamId: number | null;
   opponentTeamId: number | null;
   competitionName: string;
   matchDate: string; // ISO 8601
@@ -82,6 +83,8 @@ export interface MatchSummaryDTO {
 }
 
 export interface MatchSearchQuery {
+  teamId?: number;
+  competitionId?: number;
   fromDate?: string; // yyyy-MM-dd
   toDate?: string; // yyyy-MM-dd
   season?: string;

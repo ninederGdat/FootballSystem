@@ -5,8 +5,7 @@ import { SectionCard } from "../components/common/SectionCard";
 import { LoadingState, ErrorState } from "../components/common/States";
 import { MatchHeader } from "../components/match/MatchHeader";
 import { Formation, SubstitutesList } from "../components/match/Lineup";
-
-const OUR_TEAM_CODE = "CHE";
+import { getTrackedTeam } from "../lib/teams";
 
 function fallbackCode(name: string): string {
   return name.slice(0, 3).toUpperCase();
@@ -26,9 +25,11 @@ export function MatchDetailPage() {
   if (error) return <ErrorState error={error} />;
   if (!data) return null;
 
+  const ours = data.teamId != null ? getTrackedTeam(data.teamId) : undefined;
+  const ourCode = ours?.abbr ?? "UNK";
   const isHome = data.homeOrAway === "home";
-  const homeCode = isHome ? OUR_TEAM_CODE : fallbackCode(data.opponentName);
-  const awayCode = isHome ? fallbackCode(data.opponentName) : OUR_TEAM_CODE;
+  const homeCode = isHome ? ourCode : fallbackCode(data.opponentName);
+  const awayCode = isHome ? fallbackCode(data.opponentName) : ourCode;
 
   return (
     <div className="space-y-6">

@@ -1,8 +1,10 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMatches } from "../features/matches/hooks";
 import { useCompetitions } from "../features/competitions/hooks";
 import { ApiError } from "../api/client";
+import { useContextTeam } from "../features/team-context/TeamContext";
+import { getTrackedTeam } from "../lib/teams";
 import type {
   MatchSearchQuery,
   MatchStatus,
@@ -10,10 +12,6 @@ import type {
 } from "../types/match";
 
 const PAGE_SIZE = 20;
-const ALL_COMPETITIONS = "All Competitions";
-
-const OUR_TEAM_NAME = "Chelsea";
-const OUR_TEAM_CODE = "CHE";
 
 function fallbackCode(name: string): string {
   return name.slice(0, 3).toUpperCase();
@@ -87,10 +85,14 @@ interface Row {
 }
 
 function toRow(match: MatchSummaryDTO): Row {
+  const ours =
+    match.teamId != null ? getTrackedTeam(match.teamId) : undefined;
+  const ourName = ours?.teamName ?? "Unknown";
+  const ourCode = ours?.abbr ?? "UNK";
   if (match.homeOrAway === "home") {
     return {
-      homeName: OUR_TEAM_NAME,
-      homeCode: OUR_TEAM_CODE,
+      homeName: ourName,
+      homeCode: ourCode,
       awayName: match.opponentName,
       awayCode: fallbackCode(match.opponentName),
     };
@@ -98,8 +100,8 @@ function toRow(match: MatchSummaryDTO): Row {
   return {
     homeName: match.opponentName,
     homeCode: fallbackCode(match.opponentName),
-    awayName: OUR_TEAM_NAME,
-    awayCode: OUR_TEAM_CODE,
+    awayName: ourName,
+    awayCode: ourCode,
   };
 }
 
@@ -117,10 +119,16 @@ function groupByMonth(items: MatchSummaryDTO[]): [string, MatchSummaryDTO[]][] {
 export function MatchListPage() {
   const navigate = useNavigate();
 
+  const { teamId: contextTeamId, team } = useContextTeam();
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState<MatchStatus | "all">("all");
-  const [competition, setCompetition] = useState(ALL_COMPETITIONS);
+  const [scope, setScope] = useState<"context" | "all">("context");
+  const [competitionId, setCompetitionId] = useState<number | "all">("all");
   const [seasonCode, setSeasonCode] = useState("all");
+
+  useEffect(() => {
+    setPage(1);
+  }, [contextTeamId, scope]);
 
   const query: MatchSearchQuery = useMemo(
     () => ({
@@ -128,8 +136,10 @@ export function MatchListPage() {
       pageSize: PAGE_SIZE,
       status: status === "all" ? undefined : status,
       season: seasonCode === "all" ? undefined : seasonCode,
+      teamId: scope === "context" ? contextTeamId : undefined,
+      competitionId: competitionId === "all" ? undefined : competitionId,
     }),
-    [page, status, seasonCode],
+    [page, status, seasonCode, contextTeamId, scope, competitionId],
   );
 
   const { data, isLoading, isError, error, isFetching } = useMatches(query);
@@ -140,22 +150,16 @@ export function MatchListPage() {
     useCompetitions();
 
   const competitionOptions = useMemo(
-    () => [
-      ALL_COMPETITIONS,
-      ...(competitionsData?.data.map((c) => c.name) ?? []),
-    ],
+    () =>
+      competitionsData?.data.map((c) => ({ id: c.id, name: c.name })) ?? [],
     [competitionsData],
   );
 
-  const filteredItems = useMemo(() => {
-    const items = data?.data ?? [];
-    if (competition === ALL_COMPETITIONS) return items;
-    return items.filter((m) => m.competitionName === competition);
-  }, [data, competition]);
+  const items = data?.data ?? [];
 
   const monthGroups = useMemo(
-    () => groupByMonth(filteredItems),
-    [filteredItems],
+    () => groupByMonth(items),
+    [items],
   );
 
   const totalCount = data?.pagination.totalItems ?? 0;
@@ -171,8 +175,8 @@ export function MatchListPage() {
     setPage(1);
   }
 
-  function handleCompetitionChange(name: string) {
-    setCompetition(name);
+  function handleCompetitionChange(value: string) {
+    setCompetitionId(value === "all" ? "all" : Number(value));
     setPage(1);
   }
 
@@ -191,14 +195,40 @@ export function MatchListPage() {
           Matches
         </h2>
         <p className="font-body-md text-body-md text-on-surface-variant">
-          Results and upcoming fixtures
+          {scope === "context" ? team.teamName : "All clubs"} results and
+          upcoming fixtures
         </p>
       </div>
 
       {/* Toolbar: status tabs + competition filter */}
       <div className="bg-surface-container border border-outline-variant rounded-lg p-unit mb-gutter flex flex-wrap gap-gutter items-center justify-between">
-        <div className="flex items-center gap-1 bg-surface-container-low border border-outline-variant rounded-DEFAULT p-1">
-          {STATUS_TABS.map((tab) => (
+        <div className="flex items-center gap-gutter flex-wrap">
+          <div className="flex items-center gap-1 bg-surface-container-low border border-outline-variant rounded-DEFAULT p-1">
+            <button
+              key="context"
+              onClick={() => setScope("context")}
+              className={
+                scope === "context"
+                  ? "px-3 py-1.5 rounded-DEFAULT bg-primary-container text-on-primary-container font-label-caps text-label-caps uppercase transition-colors"
+                  : "px-3 py-1.5 rounded-DEFAULT text-on-surface-variant hover:text-on-surface font-label-caps text-label-caps uppercase transition-colors"
+              }
+            >
+              {team.teamName}
+            </button>
+            <button
+              key="all"
+              onClick={() => setScope("all")}
+              className={
+                scope === "all"
+                  ? "px-3 py-1.5 rounded-DEFAULT bg-primary-container text-on-primary-container font-label-caps text-label-caps uppercase transition-colors"
+                  : "px-3 py-1.5 rounded-DEFAULT text-on-surface-variant hover:text-on-surface font-label-caps text-label-caps uppercase transition-colors"
+              }
+            >
+              All clubs
+            </button>
+          </div>
+          <div className="flex items-center gap-1 bg-surface-container-low border border-outline-variant rounded-DEFAULT p-1">
+            {STATUS_TABS.map((tab) => (
             <button
               key={tab.value}
               onClick={() => handleStatusChange(tab.value)}
@@ -211,6 +241,7 @@ export function MatchListPage() {
               {tab.label}
             </button>
           ))}
+          </div>
         </div>
 
         <div className="flex items-center gap-gutter">
@@ -239,22 +270,28 @@ export function MatchListPage() {
             <span className="text-outline-variant font-label-caps text-label-caps px-2">
               COMPETITION
             </span>
-            <select
-              className="bg-transparent border-none text-on-surface focus:ring-0 font-body-sm py-1 pl-2 pr-8 cursor-pointer appearance-none disabled:opacity-50"
-              value={competition}
-              disabled={competitionsLoading}
-              onChange={(e) => handleCompetitionChange(e.target.value)}
+          <select
+            className="bg-transparent border-none text-on-surface focus:ring-0 font-body-sm py-1 pl-2 pr-8 cursor-pointer appearance-none disabled:opacity-50"
+            value={String(competitionId)}
+            disabled={competitionsLoading}
+            onChange={(e) => handleCompetitionChange(e.target.value)}
+          >
+            <option
+              value="all"
+              className="bg-surface-container-low text-on-surface"
             >
-              {competitionOptions.map((opt) => (
-                <option
-                  key={opt}
-                  value={opt}
-                  className="bg-surface-container-low text-on-surface"
-                >
-                  {opt}
-                </option>
-              ))}
-            </select>
+              All Competitions
+            </option>
+            {competitionOptions.map((c) => (
+              <option
+                key={c.id}
+                value={String(c.id)}
+                className="bg-surface-container-low text-on-surface"
+              >
+                {c.name}
+              </option>
+            ))}
+          </select>
           </div>
         </div>
       </div>
@@ -306,7 +343,7 @@ export function MatchListPage() {
                 </tr>
               )}
 
-              {!isLoading && !isError && filteredItems.length === 0 && (
+              {!isLoading && !isError && items.length === 0 && (
                 <tr>
                   <td
                     colSpan={6}
@@ -397,7 +434,7 @@ export function MatchListPage() {
           <span className="font-body-sm text-body-sm text-on-surface-variant">
             {totalCount === 0
               ? "No matches"
-              : `Showing ${filteredItems.length} of ${totalCount} matches`}
+              : `Showing ${items.length} of ${totalCount} matches`}
             {isFetching && !isLoading ? " · refreshing..." : ""}
           </span>
           <div className="flex items-center gap-1">

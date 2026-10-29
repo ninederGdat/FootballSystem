@@ -16,6 +16,8 @@ export function searchMatches(query: MatchSearchQuery, signal?: AbortSignal) {
   return apiGet<PagedResponse<MatchSummaryDTO>>(
     "/api/matches",
     {
+      teamId: query.teamId,
+      competitionId: query.competitionId,
       fromDate: query.fromDate,
       toDate: query.toDate,
       // BUGFIX: `season` was defined on MatchSearchQuery and consumed by

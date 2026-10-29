@@ -186,7 +186,12 @@ export function PlayerListPage() {
               <thead>
                 <tr className="border-b border-outline-variant bg-surface-container-high">
                   <th className="w-16 px-4 py-3 text-right font-label-caps uppercase text-on-surface-variant">
-                    #
+                    <div className="flex items-center justify-end gap-1">
+                      #
+                      <span className="material-symbols-outlined text-[14px] opacity-50">
+                        arrow_downward
+                      </span>
+                    </div>
                   </th>
                   <th className="px-4 py-3 font-label-caps uppercase text-on-surface-variant">
                     Player
@@ -207,7 +212,7 @@ export function PlayerListPage() {
                     Value
                   </th>
                   <th className="w-32 px-4 py-3 font-label-caps uppercase text-on-surface-variant">
-                    Relation
+                    Transfer
                   </th>
                   <th className="w-24 px-4 py-3 text-right font-label-caps uppercase text-on-surface-variant">
                     Contract
@@ -296,7 +301,7 @@ function PlayerRow({
       <td className="px-4 py-2">
         <StatusPill status={player.status} injury={player.injuryDescription} />
       </td>
-      <td className="px-4 py-2 text-right text-on-surface-variant">
+      <td className="px-4 py-2 text-right font-data-mono text-data-mono text-on-surface">
         {player.marketValue != null
           ? formatMarketValue(player.marketValue)
           : "-"}
@@ -304,7 +309,7 @@ function PlayerRow({
       <td className="px-4 py-2">
         <RelationBadge relation={player.relation} />
       </td>
-      <td className="px-4 py-2 text-right text-on-surface-variant">
+      <td className="px-4 py-2 text-right font-data-mono text-data-mono text-on-surface-variant">
         {player.contractUntil ? player.contractUntil.slice(0, 4) : "-"}
       </td>
     </tr>

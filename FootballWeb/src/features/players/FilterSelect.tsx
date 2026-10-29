@@ -1,4 +1,4 @@
-// Presentational filter dropdown in the primary accent style.
+// Presentational filter dropdown in the neutral prototype style.
 export function FilterSelect({
   label,
   value,
@@ -11,15 +11,15 @@ export function FilterSelect({
   options: { value: string; label: string }[];
 }) {
   return (
-    <div className="flex items-center gap-2 rounded border border-primary/30 bg-primary/10 p-1">
-      <span className="px-2 font-label-caps uppercase text-primary">
+    <div className="flex items-center gap-2 rounded border border-outline-variant bg-surface-container-low p-1">
+      <span className="px-2 font-label-caps text-outline-variant">
         {label}
       </span>
       <div className="relative">
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="cursor-pointer appearance-none border-none bg-transparent py-1 pl-2 pr-8 font-body-sm text-primary focus:ring-0 [color-scheme:dark]"
+          className="cursor-pointer appearance-none border-none bg-transparent py-1 pl-2 pr-8 font-body-sm text-on-surface focus:ring-0 [color-scheme:dark]"
         >
           {options.map((option) => (
             <option
@@ -31,7 +31,7 @@ export function FilterSelect({
             </option>
           ))}
         </select>
-        <span className="material-symbols-outlined pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[16px] text-primary">
+        <span className="material-symbols-outlined pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[16px] text-outline-variant">
           expand_more
         </span>
       </div>

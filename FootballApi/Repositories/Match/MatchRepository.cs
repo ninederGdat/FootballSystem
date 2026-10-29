@@ -2,6 +2,7 @@ using FootballApi.Repositories.Match;
 using FootballSystem.Shared.Infrastructure;
 using FootballSystem.Shared.Models.Clean;
 using Supabase.Postgrest;
+using Supabase.Postgrest.Interfaces;
 
 namespace FootballApi.Repositories.Match;
 
@@ -53,6 +54,8 @@ public class MatchRepository : IMatchRepository
         DateTime? toDate,
         string? opponent,
         string? status,
+        long? teamId,
+        long? competitionId,
         int page,
         int pageSize,
         CancellationToken ct = default)
@@ -91,8 +94,24 @@ public class MatchRepository : IMatchRepository
                 Constants.Operator.Equals,
                 status);
 
+
+
+        // Mỗi match_id chỉ có 1 hàng (sync upsert OnConflict = "match_id"). Trận giữa hai CLB
+        // theo dõi mang team_id của đội sync sau cùng, nên phải khớp cả hai cột để không mất trận.
+        if (teamId is not null)
+            query.Or(new List<IPostgrestQueryFilter>
+                        {
+            new QueryFilter("team_id", Constants.Operator.Equals, teamId.Value),
+            new QueryFilter("opponent_team_id", Constants.Operator.Equals, teamId.Value)
+            });
+
+        if (competitionId is not null)
+            query.Filter("competition_id", Constants.Operator.Equals, competitionId.Value);
+
         // Most recent/soonest matches first — matches the fan-facing "what's happening" use case.
+        // match_id là tie-breaker để phân trang ổn định khi nhiều trận cùng ngày.
         query.Order("match_date", Constants.Ordering.Ascending);
+        query.Order("match_id", Constants.Ordering.Ascending);
 
         // Clamp to sane values so a bad/zero pageSize can't blow up Range() or return everything.
         var safePage = page < 1 ? 1 : page;

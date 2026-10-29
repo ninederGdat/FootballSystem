@@ -7,6 +7,10 @@ namespace FootballApi.DTOs.Matches;
 public class MatchSummaryResponse
 {
     public long MatchId { get; set; }
+
+    /// <summary>CLB mà hàng này mô tả (OpponentName/HomeOrAway tính theo CLB này).</summary>
+    public long? TeamId { get; set; }
+    public long? OpponentTeamId { get; set; }
     public DateTime MatchDate { get; set; }
     public string OpponentName { get; set; } = string.Empty;
     public string? HomeOrAway { get; set; }

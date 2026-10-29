@@ -26,7 +26,10 @@ public class MatchesController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>Tìm kiếm/lọc danh sách trận đấu theo ngày, đối thủ, trạng thái (phân trang)</summary>
+    /// <summary>
+    /// Tìm kiếm/lọc danh sách trận đấu theo ngày, đối thủ, trạng thái, CLB, giải đấu (phân trang).
+    /// teamId không truyền = trận của cả hai CLB theo dõi; teamId không phải CLB theo dõi → 400.
+    /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(PagedResponse<MatchSummaryResponse>), StatusCodes.Status200OK)]
     public async Task<ActionResult<PagedResponse<MatchSummaryResponse>>> SearchMatches(
@@ -34,6 +37,8 @@ public class MatchesController : ControllerBase
         [FromQuery] DateTime? toDate,
         [FromQuery] string? season,
         [FromQuery] string? opponent,
+         [FromQuery] long? teamId,
+       [FromQuery] long? competitionId,
         [FromQuery] string? status,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 5,
@@ -48,6 +53,8 @@ public class MatchesController : ControllerBase
             ToDate = toDate,
             Season = season,
             Opponent = opponent,
+            TeamId = teamId,
+            CompetitionId = competitionId,
             Status = status,
             Page = page,
             PageSize = pageSize

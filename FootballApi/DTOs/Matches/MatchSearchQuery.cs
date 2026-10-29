@@ -8,6 +8,12 @@ public class MatchSearchQuery
     public DateTime? FromDate { get; set; }
     public DateTime? ToDate { get; set; }
     public string? Season { get; set; }
+
+    /// <summary>CLB theo dõi cần xem (team_id HOẶC opponent_team_id). Null = cả hai CLB.</summary>
+    public long? TeamId { get; set; }
+
+    public long? CompetitionId { get; set; }
+
     public string? Opponent { get; set; }
 
     /// <summary><c>UPCOMING</c>, <c>ONGOING</c>, hoặc <c>FINISHED</c>.</summary>

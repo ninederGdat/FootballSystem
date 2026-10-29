@@ -26,4 +26,12 @@ public class TeamRepository : ITeamRepository
             .Get(ct);
         return result.Models;
     }
+
+    public async Task<List<TeamClean>> GetAllAsync(CancellationToken ct = default)
+    {
+        var result = await _client.From<TeamClean>()
+            .Order("team_id", Supabase.Postgrest.Constants.Ordering.Ascending)
+            .Get(ct);
+        return result.Models;
+    }
 }

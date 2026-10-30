@@ -1,10 +1,22 @@
 import type { MatchResponse } from "../../types/match";
-import { formatMatchDate, formatStatus } from "../../lib/format";
+import { formatMatchDate, formatStatus, matchOutcome } from "../../lib/format";
 import { getTrackedTeam } from "../../lib/teams";
 
 function fallbackCode(name: string): string {
   return name.slice(0, 3).toUpperCase();
 }
+
+const OUTCOME_STYLES: Record<string, string> = {
+  WIN: "bg-green-500/10 text-green-400",
+  LOSS: "bg-red-500/10 text-red-400",
+  DRAW: "bg-surface-variant text-on-surface-variant",
+};
+
+const OUTCOME_DOT: Record<string, string> = {
+  WIN: "bg-green-400",
+  LOSS: "bg-red-400",
+  DRAW: "bg-on-surface-variant",
+};
 
 export function MatchHeader({ match }: { match: MatchResponse }) {
   const ours = match.teamId != null ? getTrackedTeam(match.teamId) : undefined;
@@ -18,32 +30,82 @@ export function MatchHeader({ match }: { match: MatchResponse }) {
   const homeScore = isHome ? match.scoreHome : match.scoreAway;
   const awayScore = isHome ? match.scoreAway : match.scoreHome;
 
+  const outcome =
+    match.scoreHome !== null &&
+    match.scoreAway !== null &&
+    match.status === "FINISHED"
+      ? matchOutcome(match.scoreHome, match.scoreAway, match.homeOrAway)
+      : null;
+
   return (
-    <div className="relative rounded bg-surface-container p-6">
-      <div className="absolute right-6 top-6">
-        <span className="flex items-center gap-1.5 rounded-full bg-surface-variant px-3 py-1 font-label-caps uppercase text-on-surface-variant">
-          <span className="h-1.5 w-1.5 rounded-full bg-on-surface-variant" />
-          {formatStatus(match.status)}
-        </span>
-      </div>
+    <div className="relative overflow-hidden rounded bg-surface-container p-6">
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-primary-container/10 via-transparent to-transparent" />
 
-      <div className="flex flex-wrap items-center gap-2 font-label-caps uppercase text-on-surface-variant">
-        <span className="rounded bg-surface-variant px-2 py-1">
-          {match.competitionName ?? "Unknown competition"}
-        </span>
-        <span className="normal-case tracking-normal">
-          {formatMatchDate(match.matchDate)}
-        </span>
-      </div>
-
-      <div className="mt-6 flex items-center justify-center gap-8 sm:gap-12">
-        <TeamBlock name={homeName} code={homeCode} variant="home" />
-        <div className="flex items-center gap-3 font-display-lg tabular-nums text-on-surface">
-          <span>{homeScore ?? "-"}</span>
-          <span className="text-outline">-</span>
-          <span>{awayScore ?? "-"}</span>
+      <div className="relative flex flex-col gap-5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2 overflow-hidden">
+            <span className="font-label-caps text-label-caps font-bold uppercase tracking-wider text-on-surface-variant">
+              {match.competitionName ?? "Unknown competition"}
+            </span>
+            <span className="text-outline">•</span>
+            <span className="font-body-sm text-body-sm text-outline">
+              {formatMatchDate(match.matchDate)}
+            </span>
+          </div>
+          <span className="shrink-0 rounded-full bg-surface-container-highest px-2.5 py-0.5 font-label-caps text-label-caps font-bold uppercase tracking-wider text-on-surface">
+            {formatStatus(match.status)}
+          </span>
         </div>
-        <TeamBlock name={awayName} code={awayCode} variant="away" />
+
+        <div className="grid grid-cols-12 items-center gap-4 py-1">
+          <div className="col-span-12 flex justify-center md:col-span-5 md:justify-end">
+            <TeamBlock
+              name={homeName}
+              code={homeCode}
+              tag="HOME"
+              focused={!!ours && isHome}
+              nameFirst
+            />
+          </div>
+
+          <div className="col-span-12 flex flex-col items-center justify-center md:col-span-2">
+            <div className="flex items-center gap-3 rounded-lg bg-surface-container-lowest px-6 py-2">
+              <span className="font-display-lg text-display-lg font-bold text-on-surface">
+                {homeScore ?? "-"}
+              </span>
+              <span className="font-data-mono text-headline-sm text-outline">
+                –
+              </span>
+              <span className="font-display-lg text-display-lg font-bold text-on-surface">
+                {awayScore ?? "-"}
+              </span>
+            </div>
+            {outcome && (
+              <div
+                className={`mt-2 flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-label-caps text-label-caps font-bold ${
+                  OUTCOME_STYLES[outcome] ?? OUTCOME_STYLES.DRAW
+                }`}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    OUTCOME_DOT[outcome] ?? OUTCOME_DOT.DRAW
+                  }`}
+                />
+                {outcome}
+              </div>
+            )}
+          </div>
+
+          <div className="col-span-12 flex justify-center md:col-span-5 md:justify-start">
+            <TeamBlock
+              name={awayName}
+              code={awayCode}
+              tag="AWAY"
+              focused={!!ours && !isHome}
+              nameFirst={false}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -52,25 +114,50 @@ export function MatchHeader({ match }: { match: MatchResponse }) {
 function TeamBlock({
   name,
   code,
-  variant,
+  tag,
+  focused,
+  nameFirst,
 }: {
   name: string;
   code: string;
-  variant: "home" | "away";
+  tag: "HOME" | "AWAY";
+  focused: boolean;
+  nameFirst: boolean;
 }) {
-  const badgeClasses =
-    variant === "home"
-      ? "bg-primary text-on-primary"
-      : "bg-secondary-container text-on-secondary-container";
+  const badge = (
+    <div
+      className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full font-data-mono text-headline-sm font-bold shadow-md ring-1 ring-outline-variant ${
+        focused
+          ? "bg-primary-container text-on-primary"
+          : "bg-secondary-container text-on-secondary-container"
+      }`}
+    >
+      {code}
+    </div>
+  );
+
+  const label = (
+    <div className={nameFirst ? "text-left md:text-right" : "text-left"}>
+      <p className="font-body-sm text-body-sm font-semibold text-on-surface">
+        {name}
+      </p>
+      <p className="font-label-caps text-label-caps text-outline">{tag}</p>
+    </div>
+  );
 
   return (
-    <div className="flex w-24 flex-col items-center gap-2 text-center sm:w-32">
-      <div
-        className={`flex h-14 w-14 items-center justify-center rounded-lg font-data-mono text-[15px] font-bold ${badgeClasses}`}
-      >
-        {code}
-      </div>
-      <span className="font-body-md font-medium text-on-surface">{name}</span>
+    <div className="flex items-center gap-4">
+      {nameFirst ? (
+        <>
+          {label}
+          {badge}
+        </>
+      ) : (
+        <>
+          {badge}
+          {label}
+        </>
+      )}
     </div>
   );
 }

@@ -76,3 +76,19 @@ export function formatAge(dobIso: string | null): string {
   if (beforeBirthday) age -= 1;
   return age > 0 ? String(age) : "—";
 }
+
+// Outcome of the tracked team, derived purely from the wire's score fields
+// plus homeOrAway. Returns null when the side cannot be determined so the
+// caller can omit the verdict instead of guessing.
+export function matchOutcome(
+  scoreHome: number,
+  scoreAway: number,
+  homeOrAway: string | null,
+): "WIN" | "DRAW" | "LOSS" | null {
+  if (homeOrAway !== "home" && homeOrAway !== "away") return null;
+  const our = homeOrAway === "home" ? scoreHome : scoreAway;
+  const opp = homeOrAway === "home" ? scoreAway : scoreHome;
+  if (our > opp) return "WIN";
+  if (our < opp) return "LOSS";
+  return "DRAW";
+}

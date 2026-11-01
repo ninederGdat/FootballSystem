@@ -56,6 +56,7 @@ public class MatchRepository : IMatchRepository
         string? status,
         long? teamId,
         long? competitionId,
+        bool descending,
         int page,
         int pageSize,
         CancellationToken ct = default)
@@ -108,14 +109,16 @@ public class MatchRepository : IMatchRepository
         if (competitionId is not null)
             query.Filter("competition_id", Constants.Operator.Equals, competitionId.Value);
 
-        // Most recent/soonest matches first — matches the fan-facing "what's happening" use case.
-        // match_id là tie-breaker để phân trang ổn định khi nhiều trận cùng ngày.
-        query.Order("match_date", Constants.Ordering.Ascending);
-        query.Order("match_id", Constants.Ordering.Ascending);
+
+        // Mặc định trận sớm nhất trước; descending = trận mới nhất trước (kết quả gần đây).
+        // match_id là tie-breaker cùng chiều để phân trang ổn định khi nhiều trận cùng ngày.
+        var direction = descending ? Constants.Ordering.Descending : Constants.Ordering.Ascending;
+        query.Order("match_date", direction);
+        query.Order("match_id", direction);
 
         // Clamp to sane values so a bad/zero pageSize can't blow up Range() or return everything.
         var safePage = page < 1 ? 1 : page;
-        var safePageSize = pageSize < 1 ? 20 : pageSize;
+        var safePageSize = pageSize < 1 ? 5 : pageSize;
 
         var offset = (safePage - 1) * safePageSize;
         var limit = offset + safePageSize - 1;

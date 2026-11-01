@@ -18,6 +18,8 @@ public class MatchSearchQuery
 
     /// <summary><c>UPCOMING</c>, <c>ONGOING</c>, hoặc <c>FINISHED</c>.</summary>
     public string? Status { get; set; }
+    /// <summary>Sắp xếp theo ngày: <c>asc</c> (mặc định, trận sớm nhất trước) hoặc <c>desc</c> (trận mới nhất trước).</summary>
+    public string Sort { get; set; } = "asc";
 
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 20;

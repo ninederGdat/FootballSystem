@@ -29,6 +29,7 @@ public class MatchesController : ControllerBase
     /// <summary>
     /// Tìm kiếm/lọc danh sách trận đấu theo ngày, đối thủ, trạng thái, CLB, giải đấu (phân trang).
     /// teamId không truyền = trận của cả hai CLB theo dõi; teamId không phải CLB theo dõi → 400.
+    /// sort = asc (mặc định) hoặc desc theo match_date; giá trị khác → 400.
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(PagedResponse<MatchSummaryResponse>), StatusCodes.Status200OK)]
@@ -38,8 +39,10 @@ public class MatchesController : ControllerBase
         [FromQuery] string? season,
         [FromQuery] string? opponent,
          [FromQuery] long? teamId,
+
        [FromQuery] long? competitionId,
         [FromQuery] string? status,
+        [FromQuery] string sort = "asc",
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 5,
         CancellationToken ct = default)
@@ -55,6 +58,7 @@ public class MatchesController : ControllerBase
             Opponent = opponent,
             TeamId = teamId,
             CompetitionId = competitionId,
+            Sort = sort,
             Status = status,
             Page = page,
             PageSize = pageSize

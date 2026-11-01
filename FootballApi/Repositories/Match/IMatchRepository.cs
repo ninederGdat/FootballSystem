@@ -14,6 +14,7 @@ public interface IMatchRepository
        string? status,
        long? teamId,
        long? competitionId,
+       bool descending,
        int page,
        int pageSize,
        CancellationToken ct = default);

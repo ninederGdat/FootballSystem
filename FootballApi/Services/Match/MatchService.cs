@@ -62,16 +62,22 @@ public class MatchService : IMatchService
             await _teamRepository.GetByIdAsync(contextTeamId, ct) is null)
             throw new BadRequestException($"teamId {contextTeamId} is not a tracked team.");
 
+        var sort = query.Sort?.Trim().ToLowerInvariant();
+        if (sort is not ("asc" or "desc"))
+            throw new BadRequestException($"sort '{query.Sort}' is invalid. Use 'asc' or 'desc'.");
+
+
         var (matches, totalCount) = await _repository.SearchAsync(
-            fromDate,
-            toDate,
-            query.Opponent,
-            query.Status,
-            query.TeamId,
-            query.CompetitionId,
-            query.Page,
-            query.PageSize,
-            ct);
+                                                    fromDate,
+                                                    toDate,
+                                                    query.Opponent,
+                                                    query.Status,
+                                                    query.TeamId,
+                                                    query.CompetitionId,
+                                                    sort == "desc",
+                                                    query.Page,
+                                                    query.PageSize,
+                                                    ct);
 
         // Trận giữa hai CLB theo dõi chỉ có 1 hàng, team_id có thể là CLB còn lại.
         // Khi xem theo một CLB, đảo hàng đó về đúng góc nhìn của CLB đang xem.

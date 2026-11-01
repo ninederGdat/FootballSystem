@@ -27,6 +27,7 @@ export function searchMatches(query: MatchSearchQuery, signal?: AbortSignal) {
       season: query.season,
       opponent: query.opponent,
       status: query.status,
+      sort: query.sort,
       page: query.page ?? 1,
       pageSize: query.pageSize ?? 20,
     },

@@ -90,6 +90,7 @@ export interface MatchSearchQuery {
   season?: string;
   opponent?: string;
   status?: MatchStatus;
+  sort?: "asc" | "desc";
   page?: number;
   pageSize?: number;
 }

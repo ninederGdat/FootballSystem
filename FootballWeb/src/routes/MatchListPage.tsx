@@ -14,6 +14,13 @@ import type {
 
 const PAGE_SIZE = 20;
 
+type SortDir = "asc" | "desc";
+
+// Finished tab reads newest first; All/Upcoming read oldest first.
+function defaultSortFor(status: MatchStatus | "all"): SortDir {
+  return status === "FINISHED" ? "desc" : "asc";
+}
+
 function fallbackCode(name: string): string {
   return name.slice(0, 3).toUpperCase();
 }
@@ -192,6 +199,7 @@ export function MatchListPage() {
   const { teamId: contextTeamId, team } = useContextTeam();
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState<MatchStatus | "all">("all");
+  const [sort, setSort] = useState<SortDir>(defaultSortFor(status));
   const [scope, setScope] = useState<"context" | "all">("context");
   const [competitionId, setCompetitionId] = useState<number | "all">("all");
   const [seasonCode, setSeasonCode] = useState("all");
@@ -217,12 +225,13 @@ export function MatchListPage() {
       page,
       pageSize: PAGE_SIZE,
       status: status === "all" ? undefined : status,
+      sort,
       season: seasonCode === "all" ? undefined : seasonCode,
       teamId: scope === "context" ? contextTeamId : undefined,
       competitionId: competitionId === "all" ? undefined : competitionId,
       opponent: debouncedOpponent === "" ? undefined : debouncedOpponent,
     }),
-    [page, status, seasonCode, contextTeamId, scope, competitionId, debouncedOpponent],
+    [page, status, sort, seasonCode, contextTeamId, scope, competitionId, debouncedOpponent],
   );
 
   const {
@@ -265,6 +274,12 @@ export function MatchListPage() {
 
   function handleStatusChange(value: MatchStatus | "all") {
     setStatus(value);
+    setSort(defaultSortFor(value));
+    setPage(1);
+  }
+
+  function handleSortChange(value: string) {
+    setSort(value === "desc" ? "desc" : "asc");
     setPage(1);
   }
 
@@ -280,6 +295,7 @@ export function MatchListPage() {
 
   function handleResetFilters() {
     setStatus("all");
+    setSort(defaultSortFor("all"));
     setSeasonCode("all");
     setCompetitionId("all");
     setOpponentInput("");
@@ -399,6 +415,20 @@ export function MatchListPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <select
+              className="appearance-none bg-surface-container-lowest text-on-surface font-body-sm text-body-sm rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+              value={sort}
+              aria-label="Sort matches"
+              onChange={(e) => handleSortChange(e.target.value)}
+            >
+              <option value="desc">Newest first</option>
+              <option value="asc">Oldest first</option>
+            </select>
+            <span className="material-symbols-outlined pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-[16px]">
+              expand_more
+            </span>
+          </div>
           <div className="relative w-44 md:w-56">
             <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-[16px]">
               search

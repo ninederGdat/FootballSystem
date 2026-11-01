@@ -1,8 +1,18 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { ErrorState, LoadingState } from "../components/common/States";
+import { useState, type ReactNode } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "../components/common/States";
+import { SectionCard } from "../components/common/SectionCard";
+import { formatLoanDate } from "../lib/format";
 import { useSeasons } from "../features/seasons/hooks";
 import { useTransferStatistics } from "../features/transfers/hooks";
+import { useMatches } from "../features/matches/hooks";
+import { usePlayerSearch } from "../features/players/hooks";
+import { useContextTeam } from "../features/team-context/TeamContext";
+import type { MatchSummaryDTO } from "../types/match";
 import type { TransferStatistics } from "../types/transfer";
 
 function formatEuroAmount(amount: number): string {
@@ -16,6 +26,35 @@ function formatEuroAmount(amount: number): string {
   return `€${amount.toLocaleString()}`;
 }
 
+// Result tones per the approved pill colors: W green, D amber, L rose.
+const RESULT_TONES: Record<"W" | "D" | "L", string> = {
+  W: "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
+  D: "border-amber-500/20 bg-amber-500/10 text-amber-400",
+  L: "border-rose-500/20 bg-rose-500/10 text-rose-400",
+};
+
+// Exact result rule: ours = home ? scoreHome : scoreAway, theirs = the
+// other score; W / D / L; no result when a score is null. (lib matchOutcome
+// coerces nulls, other callers keep using it — page keeps its own helper.)
+function resultFor(match: MatchSummaryDTO): "W" | "D" | "L" | null {
+  if (match.homeOrAway !== "home" && match.homeOrAway !== "away") return null;
+  if (match.scoreHome === null || match.scoreAway === null) return null;
+  const ours = match.homeOrAway === "home" ? match.scoreHome : match.scoreAway;
+  const theirs =
+    match.homeOrAway === "home" ? match.scoreAway : match.scoreHome;
+  if (ours > theirs) return "W";
+  if (ours < theirs) return "L";
+  return "D";
+}
+
+function formatKickoff(iso: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
 function MetricCard({
   icon,
   label,
@@ -25,7 +64,7 @@ function MetricCard({
 }: {
   icon: string;
   label: string;
-  value: string;
+  value: ReactNode;
   detail: string;
   tone: "blue" | "green" | "slate";
 }) {
@@ -95,7 +134,7 @@ function TransferComparison({
             </span>
           </div>
           <p className="mt-1 text-xs text-on-surface-variant">
-            Chelsea transfer fees for {statistics.season.replace("-", "/")}
+            {statistics.teamName} transfer fees for {statistics.season.replace("-", "/")}
           </p>
         </div>
         <Link
@@ -138,7 +177,203 @@ function TransferComparison({
   );
 }
 
+// Recent form: last 5 finished results as W/D/L chips. Matches arrive
+// newest-first (sort desc), so filtering then reversing puts the oldest
+// chip on the left and the newest on the right; no result yet shows "—".
+function RecentFormCard({
+  matches,
+  isLoading,
+  isError,
+  error,
+}: {
+  matches: MatchSummaryDTO[];
+  isLoading: boolean;
+  isError: boolean;
+  error: unknown;
+}) {
+  const chips = matches
+    .map(resultFor)
+    .filter((chip): chip is "W" | "D" | "L" => chip !== null)
+    .reverse();
+  return (
+    <MetricCard
+      icon="history"
+      label="Recent form"
+      tone="slate"
+      detail={
+        isError
+          ? `Results unavailable${error instanceof Error ? ` — ${error.message}` : ""}`
+          : "Last 5 finished matches"
+      }
+      value={
+        isLoading ? (
+          "…"
+        ) : isError ? (
+          "—"
+        ) : chips.length > 0 ? (
+          <span className="flex items-center gap-2">
+            {chips.map((chip, index) => (
+              <span
+                key={`${chip}-${index}`}
+                className={`flex h-8 w-8 items-center justify-center rounded border font-data-mono text-sm font-bold ${RESULT_TONES[chip]}`}
+              >
+                {chip}
+              </span>
+            ))}
+          </span>
+        ) : (
+          "—"
+        )}
+      />
+    );
+}
+
+// Shared match row: short date, "vs" (home) / "at" (away) + opponent,
+// competition, then the kick-off time (upcoming) or a "W 3–0" score pill
+// (results, our score first). Rows navigate to the match detail page.
+function MatchRow({
+  match,
+  showResult,
+}: {
+  match: MatchSummaryDTO;
+  showResult: boolean;
+}) {
+  const navigate = useNavigate();
+  const home = match.homeOrAway === "home";
+  const result = resultFor(match);
+  const ours = home ? match.scoreHome : match.scoreAway;
+  const theirs = home ? match.scoreAway : match.scoreHome;
+  const right =
+    showResult && result !== null ? (
+      <span
+        className={`inline-flex h-6 shrink-0 items-center rounded border px-2 font-data-mono text-xs font-bold ${RESULT_TONES[result]}`}
+      >
+        {result} {ours}–{theirs}
+      </span>
+    ) : (
+      <span className="shrink-0 font-data-mono text-xs text-on-surface-variant">
+        {formatKickoff(match.matchDate)}
+      </span>
+    );
+
+  return (
+    <button
+      type="button"
+      onClick={() => navigate(`/matches/${match.matchId}`)}
+      className="flex w-full items-center gap-3 py-2 text-left transition-colors hover:bg-surface-container-high/40"
+    >
+      <span className="w-24 shrink-0 font-data-mono text-xs text-on-surface-variant">
+        {formatLoanDate(match.matchDate)}
+      </span>
+      <span className="min-w-0 flex-1 truncate">
+        <span className="font-data-mono text-xs text-primary">
+          {home ? "vs" : "at"}
+        </span>{" "}
+        <span className="text-sm text-on-surface">{match.opponentName}</span>
+        <span className="ml-1.5 hidden text-xs text-on-surface-variant sm:inline">
+          {match.competitionName}
+        </span>
+      </span>
+      {right}
+    </button>
+  );
+}
+
+// Shared card for Upcoming fixtures / Recent results.
+function MatchListCard({
+  title,
+  icon,
+  matches,
+  emptyTitle,
+  showResult,
+  isLoading,
+  isError,
+  error,
+}: {
+  title: string;
+  icon: string;
+  matches: MatchSummaryDTO[];
+  emptyTitle: string;
+  showResult: boolean;
+  isLoading: boolean;
+  isError: boolean;
+  error: unknown;
+}) {
+  return (
+    <SectionCard title={title} icon={icon} className="h-full">
+      {isLoading ? (
+        <LoadingState label={`Loading ${title.toLowerCase()}...`} />
+      ) : isError ? (
+        <ErrorState error={error} />
+      ) : matches.length === 0 ? (
+        <EmptyState title={emptyTitle} />
+      ) : (
+        <div className="divide-y divide-outline-variant/30">
+          {matches.map((match) => (
+            <MatchRow
+              key={match.matchId}
+              match={match}
+              showResult={showResult}
+            />
+          ))}
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
+// TODO(backend): a single summary endpoint would replace these 3 count requests.
+type PlayerQuery = ReturnType<typeof usePlayerSearch>;
+
+// Squad snapshot counts: three player searches with pageSize 1; each count
+// is read from pagination.totalItems so no player rows are fetched.
+function SquadSnapshotCard({
+  squadAll,
+  squadOut,
+  squadIn,
+}: {
+  squadAll: PlayerQuery;
+  squadOut: PlayerQuery;
+  squadIn: PlayerQuery;
+}) {
+  const rows = [
+    { label: "Squad", hint: "All club players", query: squadAll },
+    { label: "Loaned out", hint: "Temporarily elsewhere", query: squadOut },
+    { label: "Loaned in", hint: "On loan at the club", query: squadIn },
+  ];
+
+  return (
+    <SectionCard title="Squad snapshot" icon="groups" className="h-full">
+      <div className="divide-y divide-outline-variant/30">
+        {rows.map((row) => (
+          <div
+            key={row.label}
+            className="flex items-center justify-between py-2.5"
+          >
+            <div>
+              <p className="text-sm text-on-surface">{row.label}</p>
+              <p className="text-xs text-on-surface-variant">{row.hint}</p>
+            </div>
+            {row.query.isError ? (
+              <span className="text-xs text-error">Failed</span>
+            ) : !row.query.data ? (
+              <span className="font-data-mono text-sm text-on-surface-variant">
+                …
+              </span>
+            ) : (
+              <span className="font-data-mono text-2xl font-semibold text-on-surface">
+                {row.query.data.pagination.totalItems}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+    </SectionCard>
+  );
+}
+
 export function DashboardPage() {
+  const { teamId: contextTeamId, team } = useContextTeam();
   const [chosenSeason, setChosenSeason] = useState("");
   const seasons = useSeasons();
   const seasonOptions = seasons.data?.data ?? [];
@@ -148,24 +383,55 @@ export function DashboardPage() {
   const statistics = useTransferStatistics(activeSeason);
   const current = statistics.data;
 
+  // One request for finished matches feeds both Recent results and the
+  // Recent form chips (season selector never affects match data).
+  const recentFinished = useMatches({
+    teamId: contextTeamId,
+    status: "FINISHED",
+    sort: "desc",
+    pageSize: 5,
+  });
+  const upcoming = useMatches({
+    teamId: contextTeamId,
+    status: "UPCOMING",
+    pageSize: 5,
+  });
+  const finishedItems = recentFinished.data?.data ?? [];
+  const upcomingItems = upcoming.data?.data ?? [];
+  const transfersEmpty =
+    !statistics.isError && !statistics.isLoading && !current;
+
+  // TODO(backend): a single summary endpoint would replace these 3 count requests.
+  const squadAll = usePlayerSearch({ teamId: contextTeamId, pageSize: 1 });
+  const squadOut = usePlayerSearch({
+    teamId: contextTeamId,
+    pageSize: 1,
+    transferStatus: "loaned_out",
+  });
+  const squadIn = usePlayerSearch({
+    teamId: contextTeamId,
+    pageSize: 1,
+    transferStatus: "loaned_in",
+  });
+
   return (
     <div className="space-y-7">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <div className="mb-1 flex flex-wrap items-center gap-2">
             <span className="font-label-caps text-label-caps uppercase text-primary">
-              {current?.teamName || "Chelsea F.C."} overview
+              {team.teamName} overview
             </span>
             <span className="h-1 w-1 rounded-full bg-outline-variant" />
             <span className="font-data-mono text-xs text-on-surface-variant">
-              Premier League
+              {team.leagueName}
             </span>
           </div>
           <h1 className="font-display-lg text-3xl font-bold text-on-surface">
             Dashboard
           </h1>
           <p className="mt-1 text-sm text-on-surface-variant">
-            Transfer spending, revenue, and squad movements
+            Transfers, squad snapshot and fixtures for {team.teamName}
           </p>
         </div>
 
@@ -197,54 +463,115 @@ export function DashboardPage() {
         )}
       </div>
 
-      {seasons.isLoading ? (
-        <LoadingState label="Loading seasons..." />
-      ) : seasons.isError ? (
-        <ErrorState error={seasons.error} />
-      ) : statistics.isLoading ? (
-        <LoadingState label="Loading transfer overview..." />
-      ) : statistics.isError ? (
-        <ErrorState error={statistics.error} />
-      ) : !current ? (
-        <div className="border border-outline-variant/50 bg-surface-container-low px-5 py-10 text-center text-sm text-on-surface-variant">
-          No configured seasons are available.
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {/* Row 1 — KPI cards: Spending, Revenue, Net spend, Recent form */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {statistics.isError ? (
+          <div className="sm:col-span-2 xl:col-span-3">
+            <ErrorState error={statistics.error} />
+          </div>
+        ) : (
+          <>
             <MetricCard
               icon="south_east"
-              label="Transfer in"
-              value={formatEuroAmount(current.totalFeeToBuy)}
-              detail={`${current.permanentBuyCount} permanent signings`}
+              label="Spending"
+              value={current ? formatEuroAmount(current.totalFeeToBuy) : "…"}
+              detail={
+                current
+                  ? `${current.permanentBuyCount} buys · ${current.loanInCount} loans in`
+                  : transfersEmpty
+                    ? "No configured seasons"
+                    : "Loading..."
+              }
               tone="blue"
             />
             <MetricCard
               icon="north_east"
-              label="Transfer out"
-              value={formatEuroAmount(current.totalFeeToSell)}
-              detail={`${current.permanentSellCount} permanent sales`}
+              label="Revenue"
+              value={current ? formatEuroAmount(current.totalFeeToSell) : "…"}
+              detail={
+                current
+                  ? `${current.permanentSellCount} sales · ${current.loanOutCount} loans out`
+                  : transfersEmpty
+                    ? "No configured seasons"
+                    : "Loading..."
+              }
               tone="green"
             />
             <MetricCard
-              icon="person_add"
-              label="Players in"
-              value={String(current.permanentBuyCount + current.loanInCount)}
-              detail={`${current.permanentBuyCount} permanent · ${current.loanInCount} loans`}
-              tone="blue"
-            />
-            <MetricCard
-              icon="person_remove"
-              label="Players out"
-              value={String(current.permanentSellCount + current.loanOutCount)}
-              detail={`${current.permanentSellCount} permanent · ${current.loanOutCount} loans`}
+              icon="price_change"
+              label="Net spend"
+              value={
+                current
+                  ? `${current.netSpend < 0 ? "−" : ""}${formatEuroAmount(Math.abs(current.netSpend))}`
+                  : "…"
+              }
+              detail={
+                current
+                  ? `Spending minus revenue · ${current.season.replace("-", "/")}`
+                  : transfersEmpty
+                    ? "No configured seasons"
+                    : "Loading..."
+              }
               tone="slate"
             />
+          </>
+        )}
+        <RecentFormCard
+          matches={finishedItems}
+          isLoading={recentFinished.isLoading}
+          isError={recentFinished.isError}
+          error={recentFinished.error}
+        />
+      </div>
+      {/* Row 2 — Spending vs revenue + squad snapshot */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {statistics.isError ? (
+          <div className="lg:col-span-3">
+            <ErrorState error={statistics.error} />
           </div>
+        ) : statistics.isLoading || !current ? (
+          <div className="lg:col-span-3">
+            {transfersEmpty ? (
+              <EmptyState title="No configured seasons are available." />
+            ) : (
+              <LoadingState label="Loading transfer overview..." />
+            )}
+          </div>
+        ) : (
+          <div className="lg:col-span-2">
+            <TransferComparison statistics={current} />
+          </div>
+        )}
+        <SquadSnapshotCard
+          squadAll={squadAll}
+          squadOut={squadOut}
+          squadIn={squadIn}
+        />
+      </div>
 
-          <TransferComparison statistics={current} />
-        </>
-      )}
+      {/* Row 3 — upcoming fixtures + recent results */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <MatchListCard
+          title="Upcoming fixtures"
+          icon="event"
+          matches={upcomingItems}
+          emptyTitle="No upcoming fixtures"
+          showResult={false}
+          isLoading={upcoming.isLoading}
+          isError={upcoming.isError}
+          error={upcoming.error}
+        />
+        <MatchListCard
+          title="Recent results"
+          icon="sports_score"
+          matches={finishedItems}
+          emptyTitle="No finished matches"
+          showResult={true}
+          isLoading={recentFinished.isLoading}
+          isError={recentFinished.isError}
+          error={recentFinished.error}
+        />
+      </div>
     </div>
   );
 }

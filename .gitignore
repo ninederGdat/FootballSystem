@@ -15,4 +15,8 @@ appsettings.Development.json
 appsettings.*.local.json
 *.env
 .env
+.env.local
+
 opencode.json
+node_modules/
+dist/

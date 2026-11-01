@@ -39,20 +39,27 @@ builder.Services.AddSingleton<IValidateOptions<SeasonOptions>, SeasonOptionsVali
 
 
 // --- Frontend CORS policy -------------------------------------------------
-// Vite dev server default is http://localhost:5173. Add any other origins
-// (e.g. a deployed frontend URL) to this list as needed.
+// Local Vite dev origins are always allowed. Deployed frontend origins come
+// from configuration: Cors:AllowedOrigins (array). On Render set e.g.
+//   Cors__AllowedOrigins__0 = https://<your-project>.pages.dev
 const string FrontendCorsPolicy = "FrontendCorsPolicy";
+var configuredOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? [];
+var allowedOrigins = new[] { "http://localhost:5173", "http://127.0.0.1:5173" }
+    .Concat(configuredOrigins.Select(o => o.TrimEnd('/')))
+    .Distinct()
+    .ToArray();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(FrontendCorsPolicy, policy =>
     {
-        policy
-            .WithOrigins(
-                "http://localhost:5173",
-                "http://127.0.0.1:5173")
+        policy.WithOrigins(allowedOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod();
-    });
+    }
+    );
 });
 // ---------------------------------------------------------------------------
 
@@ -77,6 +84,20 @@ builder.Services.AddScoped<IMatchEventService, MatchEventService>();
 builder.Services.AddScoped<ITransferRepository, TransferRepository>();
 builder.Services.AddScoped<ITransferService, TransferService>();
 builder.Services.AddScoped<ISeasonService, SeasonService>();
+
+
+// --- Hosting (Render) -----------------------------------------------------
+// Render injects the port to listen on via the PORT environment variable.
+// Locally PORT is not set, so launchSettings.json / defaults still apply.
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(port))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+}
+// ---------------------------------------------------------------------------
+
+
+
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
@@ -93,7 +114,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// On Render TLS is terminated at the proxy and the container only speaks HTTP,
+// so redirecting to HTTPS here would have no port to redirect to.
+if (app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 // Must run before UseAuthorization, and before MapControllers.
 app.UseCors(FrontendCorsPolicy);
@@ -101,5 +127,7 @@ app.UseCors(FrontendCorsPolicy);
 app.UseAuthorization();
 
 app.MapControllers();
+// Lightweight liveness endpoint for Render / uptime pings. Does not touch Supabase.
+app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.Run();

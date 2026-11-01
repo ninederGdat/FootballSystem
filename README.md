@@ -27,6 +27,60 @@ A comprehensive football data management ecosystem designed to automate the coll
 
 ---
 
+# 🌐 Live Demo & Deployment
+
+| Component                    | Hosting                                  | Notes                                                            |
+| ---------------------------- | ---------------------------------------- | ---------------------------------------------------------------- |
+| **Web (FootballWeb)**        | Cloudflare Pages                         | `https://footballsystem.pages.dev`                               |
+| **API (FootballApi)**        | Render (free web service, Docker)        | ` https://footballsystem.onrender.com` — health check: `/health` |
+| **Sync worker (FotmobSync)** | GitHub Actions (scheduled, `--run-once`) | See `.github/workflows/fotmob-sync.yml`                          |
+| **Database**                 | Supabase (PostgreSQL)                    | Shared by the API and the sync worker                            |
+
+> **Note:** the API runs on Render's free plan and spins down after 15 minutes without traffic.
+> The first request after an idle period can take a while (cold start). Later requests are fast.
+
+## How the pieces connect
+
+```text
+GitHub Actions (cron) ──► FotmobSync ──► Supabase (PostgreSQL)
+                                              ▲
+Cloudflare Pages (React) ──► Render (FootballApi, ASP.NET Core)
+```
+
+## Deployment configuration
+
+**FootballApi (Render)**
+
+- Runtime: Docker; Dockerfile path `FootballApi/Dockerfile`; build context is the repository root (`.`); leave _Root Directory_ empty.
+- Health check path: `/health`
+- Environment variables:
+
+| Key                       | Description                                                                         |
+| ------------------------- | ----------------------------------------------------------------------------------- |
+| `Supabase__Url`           | Supabase project URL                                                                |
+| `Supabase__AnonKey`       | Supabase anon key (the API only reads data)                                         |
+| `Cors__AllowedOrigins__0` | Deployed frontend origin, e.g. `https://footballsystem.pages.dev` (no trailing `/`) |
+
+The API reads the port from the `PORT` variable that Render provides. Swagger is only enabled in the Development environment.
+
+**FootballWeb (Cloudflare Pages)**
+
+- Root directory: `FootballWeb`; build command: `npm run build`; output directory: `dist`
+- Build variables: `VITE_API_BASE_URL` (the API base URL, no trailing `/`) and `NODE_VERSION=22`
+- `FootballWeb/public/_redirects` contains `/* /index.html 200` so client-side routes work after a refresh.
+
+**FotmobSync (GitHub Actions)**
+
+- Workflow: `.github/workflows/fotmob-sync.yml` (scheduled weekly plus manual `workflow_dispatch`).
+- Repository secrets: `FOTMOB_XMAS_TOKEN`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
+- Keep the service role key only in GitHub Secrets; never in the API or the frontend.
+
+---
+
+- **Frontend**: `React 18`, `TypeScript`, `Vite`, `TanStack Query`, `React Router`, `Tailwind CSS`
+
+- **Hosting**: Cloudflare Pages (web), Render (API), GitHub Actions (scheduled sync)
+
 # 🛠️ Tech Stack
 
 - **Backend**: `.NET 10 (C#)`
@@ -35,9 +89,13 @@ A comprehensive football data management ecosystem designed to automate the coll
   - **Worker Service**: `FotmobSync` for ETL processing and background synchronization tasks
   - **ASP.NET Core controller API**: `FootballApi` for frontend data delivery
 
+- **Frontend**: `React 18`, `TypeScript`, `Vite`, `TanStack Query`, `React Router`, `Tailwind CSS`
+
 - **Database**
   - PostgreSQL
   - Hosted via **Supabase**
+
+- **Hosting**: Cloudflare Pages (web), Render (API), GitHub Actions (scheduled sync)
 
 - **Data Collection**
   - `HttpClient` for standard API endpoints

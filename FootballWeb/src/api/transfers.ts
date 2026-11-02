@@ -4,6 +4,7 @@ import type {
   TransferApiItem,
   TransferQueryParams,
   TransferStatistics,
+  TransferStatisticsParams,
 } from "../types/transfer";
 
 function buildQueryString(params: TransferQueryParams): string {
@@ -13,6 +14,11 @@ function buildQueryString(params: TransferQueryParams): string {
   if (params.pageSize !== undefined)
     searchParams.set("pageSize", String(params.pageSize));
   if (params.season) searchParams.set("season", params.season);
+  if (params.teamId !== undefined)
+    searchParams.set("teamId", String(params.teamId));
+  if (params.direction) searchParams.set("direction", params.direction);
+  if (params.internalOnly !== undefined)
+    searchParams.set("internalOnly", String(params.internalOnly));
   if (params.playerName) searchParams.set("playerName", params.playerName);
   if (params.playerId !== undefined)
     searchParams.set("playerId", String(params.playerId));
@@ -44,12 +50,16 @@ export async function getTransfers(
 
 // GET /api/transfers/statistics — seasonal totals for a team.
 export function getTransferStatistics(
-  season: string,
+  params: TransferStatisticsParams,
   signal?: AbortSignal,
 ): Promise<TransferStatistics> {
   return apiGet<TransferStatistics>(
     "/api/transfers/statistics",
-    { season },
+    {
+      teamId: params.teamId,
+      season: params.season,
+      internalOnly: params.internalOnly,
+    },
     { signal },
   );
 }

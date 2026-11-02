@@ -380,7 +380,10 @@ export function DashboardPage() {
   const activeSeason =
     seasonOptions.find((season) => season.code === chosenSeason)?.code ??
     seasonOptions[0]?.code;
-  const statistics = useTransferStatistics(activeSeason);
+  const statistics = useTransferStatistics({
+    teamId: contextTeamId,
+    season: activeSeason ?? "",
+  });
   const current = statistics.data;
 
   // One request for finished matches feeds both Recent results and the

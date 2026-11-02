@@ -9,10 +9,19 @@ export function useTransfers(params: TransferQueryParams) {
   });
 }
 
-export function useTransferStatistics(season?: string) {
+export function useTransferStatistics({
+  teamId,
+  season,
+  internalOnly,
+}: {
+  teamId: number;
+  season?: string;
+  internalOnly?: boolean;
+}) {
   return useQuery({
-    queryKey: ["transfer-statistics", season],
-    queryFn: ({ signal }) => getTransferStatistics(season!, signal),
-    enabled: Boolean(season),
+    queryKey: ["transfer-statistics", teamId, season, internalOnly ?? false],
+    queryFn: ({ signal }) =>
+      getTransferStatistics({ teamId, season, internalOnly }, signal),
+    enabled: Boolean(teamId && (season || internalOnly)),
   });
 }

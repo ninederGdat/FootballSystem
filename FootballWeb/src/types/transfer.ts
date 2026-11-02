@@ -24,6 +24,12 @@ export interface TransferApiItem {
   fee: number | null;
 }
 
+export interface TransferStatisticsParams {
+  teamId: number;
+  season?: string; // omit so the API resolves the current season
+  internalOnly?: boolean;
+}
+
 export interface TransferStatistics {
   teamId: number;
   teamName: string;
@@ -55,6 +61,9 @@ export interface TransferQueryParams {
   page?: number;
   pageSize?: number;
   season?: string;
+  teamId?: number; // tracked club; the club is source or destination
+  direction?: TransferDirection; // "in" | "out", requires teamId
+  internalOnly?: boolean; // both clubs tracked; requires teamId
   playerName?: string;
   playerId?: number;
   fromClubId?: number;
@@ -66,6 +75,6 @@ export interface TransferQueryParams {
   dateTo?: string; // ISO date
 }
 
-// UI-only derived direction — NOT part of the API response.
-// Derive with: toClubId === CHELSEA_TEAM_ID ? 'in' : 'out'
+// API filter direction for scoped transfer lists; always sent server-side
+// together with a tracked teamId.
 export type TransferDirection = "in" | "out";

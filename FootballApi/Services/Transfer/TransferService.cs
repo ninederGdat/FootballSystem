@@ -131,10 +131,12 @@ namespace FootballApi.Services.Transfer
 
             if (query.InternalOnly == true)
             {
-                // Chỉ giữ chuyển nhượng mà cả hai đầu đều là CLB theo dõi.
+                // Chỉ giữ chuyển nhượng giữa hai CLB theo dõi khác nhau (loại gia hạn hợp đồng: from = to).
                 var trackedIds = (await _teamRepository.GetAllAsync(ct)).Select(t => t.TeamId).ToHashSet();
-                transfers = transfers.Where(x => trackedIds.Contains(x.FromClubId) && trackedIds.Contains(x.ToClubId))
-                                    .ToList();
+                transfers = transfers.Where(x => x.FromClubId != x.ToClubId
+                                && trackedIds.Contains(x.FromClubId)
+                              && trackedIds.Contains(x.ToClubId))
+                              .ToList();
             }
 
             if (transfers.Count == 0)

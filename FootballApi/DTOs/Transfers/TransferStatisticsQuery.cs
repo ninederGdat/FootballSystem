@@ -10,5 +10,7 @@ public sealed record TransferStatisticsQuery
     public long? TeamId { get; init; } = 8455;
 
     public bool? OnLoan { get; init; }
+    /// <summary>true = chỉ tính chuyển nhượng giữa các CLB theo dõi (đối tác cũng là CLB theo dõi).</summary>
+    public bool? InternalOnly { get; init; }
 }
 

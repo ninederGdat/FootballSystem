@@ -35,6 +35,19 @@ public sealed class TransferQuery
     [FromQuery(Name = "transferType")]
     public string? TransferType { get; init; }
 
+    /// <summary>CLB theo dõi cần xem (from_club_id HOẶC to_club_id). Không phải CLB theo dõi → 400.</summary>
+    [FromQuery(Name = "teamId")]
+    [Range(1, long.MaxValue, ErrorMessage = "TeamId must be a positive integer.")]
+    public long? TeamId { get; init; }
+
+    /// <summary><c>in</c> (to_club_id = teamId) hoặc <c>out</c> (from_club_id = teamId). Bắt buộc có teamId.</summary>
+    [FromQuery(Name = "direction")]
+    public string? Direction { get; init; }
+
+    /// <summary>true = chỉ chuyển nhượng mà cả hai đầu đều là CLB theo dõi (Chelsea ↔ Strasbourg).</summary>
+    [FromQuery(Name = "internalOnly")]
+    public bool? InternalOnly { get; init; }
+
     [FromQuery(Name = "season")]
     public string? Season { get; init; }
 

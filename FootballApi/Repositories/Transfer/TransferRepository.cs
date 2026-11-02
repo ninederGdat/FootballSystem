@@ -72,8 +72,10 @@ public class TransferRepository : ITransferRepository
     }
 
     public async Task<(IReadOnlyList<TransferClean> Items, int TotalCount)> SearchAsync(
-     string playerName, long? playerId, long? fromClubId, long? toClubId, bool? onLoan, bool? contractExtension,
-     string transferType, DateTime? dateFrom, DateTime? dateTo, int page, int pageSize, CancellationToken ct)
+     string playerName, long? playerId, long? fromClubId, long? toClubId,
+     long? teamId, string? direction, IReadOnlyCollection<long>? internalClubIds,
+     bool? onLoan, bool? contractExtension,
+    string transferType, DateTime? dateFrom, DateTime? dateTo, int page, int pageSize, CancellationToken ct)
     {
         void ApplyFilters(Supabase.Postgrest.Interfaces.IPostgrestTable<TransferClean> q)
         {
@@ -89,6 +91,34 @@ public class TransferRepository : ITransferRepository
             if (toClubId is not null)
                 q.Filter("to_club_id", Supabase.Postgrest.Constants.Operator.Equals, toClubId.Value);
 
+            if (teamId is not null)
+            {
+                // direction "in" = CLB nhận cầu thủ, "out" = CLB bán/cho mượn; không có = cả hai chiều.
+                switch (direction)
+                {
+                    case "in":
+                        q.Filter("to_club_id", Supabase.Postgrest.Constants.Operator.Equals, teamId.Value);
+                        break;
+                    case "out":
+                        q.Filter("from_club_id", Supabase.Postgrest.Constants.Operator.Equals, teamId.Value);
+                        break;
+                    default:
+                        q.Or(new List<Supabase.Postgrest.Interfaces.IPostgrestQueryFilter>
+                        {
+                            new Supabase.Postgrest.QueryFilter("from_club_id", Supabase.Postgrest.Constants.Operator.Equals, teamId.Value),
+                            new Supabase.Postgrest.QueryFilter("to_club_id", Supabase.Postgrest.Constants.Operator.Equals, teamId.Value)
+                        });
+                        break;
+                }
+            }
+
+            // Chuyển nhượng nội bộ: cả hai đầu đều thuộc tập CLB theo dõi.
+            if (internalClubIds is { Count: > 0 })
+            {
+                var clubIds = internalClubIds.ToList();
+                q.Filter("from_club_id", Supabase.Postgrest.Constants.Operator.In, clubIds);
+                q.Filter("to_club_id", Supabase.Postgrest.Constants.Operator.In, clubIds);
+            }
             if (onLoan is not null)
                 q.Filter("on_loan", Supabase.Postgrest.Constants.Operator.Equals, onLoan.Value ? "true" : "false");
 

@@ -84,6 +84,24 @@ namespace FootballApi.Services.Transfer
             var fromDate = query.DateFrom;
             var toDate = query.DateTo;
 
+            var direction = query.Direction?.Trim().ToLowerInvariant();
+            if (direction is not null && direction is not ("in" or "out"))
+                throw new BadRequestException($"direction '{query.Direction}' is invalid. Use 'in' or 'out'.");
+            if (direction is not null && query.TeamId is null)
+                throw new BadRequestException("direction requires teamId.");
+
+            // teams chỉ chứa các CLB được theo dõi (FotmobSync chỉ sync 8455 và 9848).
+            IReadOnlyCollection<long>? internalClubIds = null;
+            if (query.TeamId is not null || query.InternalOnly == true)
+            {
+                var trackedIds = (await _teamRepository.GetAllAsync(ct)).Select(t => t.TeamId).ToList();
+                if (query.TeamId is { } contextTeamId && !trackedIds.Contains(contextTeamId))
+                    throw new BadRequestException($"teamId {contextTeamId} is not a tracked team.");
+                if (query.InternalOnly == true)
+                    internalClubIds = trackedIds;
+            }
+
+
             if (!string.IsNullOrWhiteSpace(query.Season))
             {
                 var season = _seasonService.Resolve(query.Season);
@@ -97,6 +115,9 @@ namespace FootballApi.Services.Transfer
              query.PlayerId,
              query.FromClubId,
              query.ToClubId,
+             query.TeamId,
+             direction,
+             internalClubIds,
              query.OnLoan,
              query.ContractExtension,
              query.TransferType ?? string.Empty,
@@ -106,6 +127,15 @@ namespace FootballApi.Services.Transfer
              query.PageSize,
              ct
             );
+
+
+            if (query.InternalOnly == true)
+            {
+                // Chỉ giữ chuyển nhượng mà cả hai đầu đều là CLB theo dõi.
+                var trackedIds = (await _teamRepository.GetAllAsync(ct)).Select(t => t.TeamId).ToHashSet();
+                transfers = transfers.Where(x => trackedIds.Contains(x.FromClubId) && trackedIds.Contains(x.ToClubId))
+                                    .ToList();
+            }
 
             if (transfers.Count == 0)
             {

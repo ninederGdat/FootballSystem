@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import type { UseQueryResult } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import {
   EmptyState,
@@ -122,27 +123,27 @@ function TransferComparison({
   const tiles = [
     {
       key: "permanent-buy",
-      label: "Permanent signings",
+      label: "Permanent signings (season)",
       count: statistics.permanentBuyCount,
     },
     {
       key: "permanent-sell",
-      label: "Permanent sales",
+      label: "Permanent sales (season)",
       count: statistics.permanentSellCount,
     },
     {
       key: "loan-in",
-      label: "Loans in",
+      label: "Loans in (season)",
       count: statistics.loanInCount,
     },
     {
       key: "loan-out",
-      label: "Loans out",
+      label: "Loans out (season)",
       count: statistics.loanOutCount,
     },
     {
       key: "contract-extensions",
-      label: "Contract extensions",
+      label: "Contract extensions (season)",
       count: statistics.contractExtensionCount,
     },
   ];
@@ -370,24 +371,52 @@ function MatchListCard({
   );
 }
 
-// TODO(backend): a single summary endpoint would replace these 3 count requests.
+// TODO(backend): only the squad total remains a separate count request.
 type PlayerQuery = ReturnType<typeof usePlayerSearch>;
 
-// Squad snapshot counts: three player searches with pageSize 1; each count
-// is read from pagination.totalItems so no player rows are fetched.
+// Squad snapshot: the squad total comes from a player search (pageSize 1; the
+// count is read from pagination.totalItems so no player rows are fetched).
+// The two loan rows read the season-scoped transfer statistics instead of
+// current player status, so they count loan-ins from untracked clubs and
+// stub players the player queries miss.
+type SquadRow =
+  | { key: string; label: string; hint: string; source: "squadAll" }
+  | {
+      key: string;
+      label: string;
+      hint: string;
+      source: "statistics";
+      stat: "loanOut" | "loanIn";
+    };
+
 function SquadSnapshotCard({
   squadAll,
-  squadOut,
-  squadIn,
+  statistics,
 }: {
   squadAll: PlayerQuery;
-  squadOut: PlayerQuery;
-  squadIn: PlayerQuery;
+  statistics: UseQueryResult<TransferStatistics>;
 }) {
-  const rows = [
-    { label: "Squad", hint: "All club players", query: squadAll },
-    { label: "Loaned out", hint: "Temporarily elsewhere", query: squadOut },
-    { label: "Loaned in", hint: "On loan at the club", query: squadIn },
+  const rows: SquadRow[] = [
+    {
+      key: "squad",
+      label: "Squad",
+      hint: "All club players",
+      source: "squadAll",
+    },
+    {
+      key: "loan-out",
+      label: "Loaned out (season)",
+      hint: "Loaned out during the selected season",
+      source: "statistics",
+      stat: "loanOut",
+    },
+    {
+      key: "loan-in",
+      label: "Loaned in (season)",
+      hint: "Loaned in during the selected season",
+      source: "statistics",
+      stat: "loanIn",
+    },
   ];
 
   return (
@@ -395,22 +424,36 @@ function SquadSnapshotCard({
       <div className="divide-y divide-outline-variant/30">
         {rows.map((row) => (
           <div
-            key={row.label}
+            key={row.key}
             className="flex items-center justify-between py-2.5"
           >
             <div>
               <p className="text-sm text-on-surface">{row.label}</p>
               <p className="text-xs text-on-surface-variant">{row.hint}</p>
             </div>
-            {row.query.isError ? (
+            {row.source === "squadAll" ? (
+              squadAll.isError ? (
+                <span className="text-xs text-error">Failed</span>
+              ) : !squadAll.data ? (
+                <span className="font-data-mono text-sm text-on-surface-variant">
+                  …
+                </span>
+              ) : (
+                <span className="font-data-mono text-2xl font-semibold text-on-surface">
+                  {squadAll.data.pagination.totalItems}
+                </span>
+              )
+            ) : statistics.isError ? (
               <span className="text-xs text-error">Failed</span>
-            ) : !row.query.data ? (
+            ) : !statistics.data ? (
               <span className="font-data-mono text-sm text-on-surface-variant">
                 …
               </span>
             ) : (
               <span className="font-data-mono text-2xl font-semibold text-on-surface">
-                {row.query.data.pagination.totalItems}
+                {row.stat === "loanOut"
+                  ? statistics.data.loanOutCount
+                  : statistics.data.loanInCount}
               </span>
             )}
           </div>
@@ -452,18 +495,8 @@ export function DashboardPage() {
   const transfersEmpty =
     !statistics.isError && !statistics.isLoading && !current;
 
-  // TODO(backend): a single summary endpoint would replace these 3 count requests.
+  // TODO(backend): only the squad total remains a separate count request.
   const squadAll = usePlayerSearch({ teamId: contextTeamId, pageSize: 1 });
-  const squadOut = usePlayerSearch({
-    teamId: contextTeamId,
-    pageSize: 1,
-    transferStatus: "loaned_out",
-  });
-  const squadIn = usePlayerSearch({
-    teamId: contextTeamId,
-    pageSize: 1,
-    transferStatus: "loaned_in",
-  });
 
   return (
     <div className="space-y-7">
@@ -593,11 +626,7 @@ export function DashboardPage() {
             <TransferComparison statistics={current} />
           </div>
         )}
-        <SquadSnapshotCard
-          squadAll={squadAll}
-          squadOut={squadOut}
-          squadIn={squadIn}
-        />
+        <SquadSnapshotCard squadAll={squadAll} statistics={statistics} />
       </div>
 
       {/* Row 3 — upcoming fixtures + recent results */}

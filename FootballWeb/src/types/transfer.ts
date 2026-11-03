@@ -41,6 +41,7 @@ export interface TransferStatistics {
   permanentSellCount: number;
   loanInCount: number;
   loanOutCount: number;
+  contractExtensionCount: number;
 }
 
 // Mirrors PagedResponse<T> / PaginationMetadata from PagedResponse.cs

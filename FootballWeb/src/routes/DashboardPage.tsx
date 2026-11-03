@@ -119,6 +119,33 @@ function TransferComparison({
       color: "bg-tertiary-fixed-dim",
     },
   ];
+  const tiles = [
+    {
+      key: "permanent-buy",
+      label: "Permanent signings",
+      count: statistics.permanentBuyCount,
+    },
+    {
+      key: "permanent-sell",
+      label: "Permanent sales",
+      count: statistics.permanentSellCount,
+    },
+    {
+      key: "loan-in",
+      label: "Loans in",
+      count: statistics.loanInCount,
+    },
+    {
+      key: "loan-out",
+      label: "Loans out",
+      count: statistics.loanOutCount,
+    },
+    {
+      key: "contract-extensions",
+      label: "Contract extensions",
+      count: statistics.contractExtensionCount,
+    },
+  ];
 
   return (
     <section className="border border-outline-variant/50 bg-surface-container-low p-5 shadow-sm md:p-6">
@@ -148,18 +175,23 @@ function TransferComparison({
         </Link>
       </div>
 
-      <div className="space-y-6" aria-label="Spending compared with revenue">
+      <div
+        className="p-4 rounded bg-surface-container-low flex flex-col gap-4"
+        aria-label="Spending compared with revenue"
+      >
         {rows.map((row) => (
           <div key={row.label}>
-            <div className="mb-2 flex items-baseline justify-between gap-3">
-              <span className="text-sm text-on-surface">{row.label}</span>
-              <span className="font-data-mono text-sm text-on-surface">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-sm font-semibold text-on-surface">
+                {row.label}
+              </span>
+              <span className="font-data-mono font-bold text-sm text-on-surface">
                 {formatEuroAmount(row.amount)}
               </span>
             </div>
-            <div className="h-3 overflow-hidden bg-surface-container-high">
+            <div className="mt-1.5 h-3 overflow-hidden rounded-full bg-surface-container-highest">
               <div
-                className={`h-full ${row.color} transition-[width] duration-500`}
+                className={`h-full rounded-full ${row.color} transition-[width] duration-500`}
                 style={{
                   width: `${Math.max((row.amount / scale) * 100, row.amount ? 1 : 0)}%`,
                 }}
@@ -172,6 +204,22 @@ function TransferComparison({
       <div className="mt-5 flex justify-between border-t border-outline-variant/30 pt-3 font-data-mono text-[11px] text-on-surface-variant">
         <span>€0</span>
         <span>{formatEuroAmount(scale)}</span>
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 sm:grid-cols-5 gap-3">
+        {tiles.map((tile) => (
+          <div
+            key={tile.key}
+            className="p-2.5 rounded bg-surface-container-low flex flex-col"
+          >
+            <span className="font-label-caps text-[10px] uppercase text-outline truncate">
+              {tile.label}
+            </span>
+            <span className="font-data-mono text-headline-sm font-bold text-on-surface mt-0.5">
+              {tile.count}
+            </span>
+          </div>
+        ))}
       </div>
     </section>
   );

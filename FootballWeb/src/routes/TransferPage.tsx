@@ -51,10 +51,10 @@ function initials(name: string): string {
 }
 
 function TypeBadge({ transfer }: { transfer: TransferApiItem }) {
-  if (transfer.contractExtension) {
+  if (transfer.contractExtension || transfer.fromClubId === transfer.toClubId) {
     return (
       <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-surface-container-highest text-on-surface-variant border border-outline-variant/50">
-        Contract Extension
+        EXTENSION
       </span>
     );
   }
@@ -117,6 +117,8 @@ function TransferRow({
   contextTeamId: number;
 }) {
   const isIncoming = transfer.toClubId === contextTeamId;
+  const isExtensionRow =
+    transfer.contractExtension || transfer.fromClubId === transfer.toClubId;
   const isInternalMove =
     transfer.fromClubId !== transfer.toClubId &&
     getTrackedTeam(transfer.fromClubId) !== undefined &&
@@ -165,7 +167,9 @@ function TransferRow({
       <td className="px-4">
         <div className="flex items-center gap-1.5">
           <TypeBadge transfer={transfer} />
-          {showInternalTag && isInternalMove && <InternalTag />}
+          {showInternalTag && !isExtensionRow && isInternalMove && (
+            <InternalTag />
+          )}
         </div>
       </td>
       <td className="px-4 text-right font-data-mono text-data-mono">
@@ -261,6 +265,13 @@ export default function TransferPage() {
   >("all");
   const [season, setSeason] = useState("all");
   const [page, setPage] = useState(1);
+  const [hideExtensions, setHideExtensions] = useState(false);
+
+  // "Hide extensions" defaults per mode: ON in all-clubs / internal modes,
+  // OFF for the single-club view (re-applied whenever the mode changes).
+  useEffect(() => {
+    setHideExtensions(mode !== "club");
+  }, [mode]);
 
   const {
     data: seasonsData,
@@ -277,7 +288,7 @@ export default function TransferPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [contextTeamId, mode, direction, internalDirection, transferType, season]);
+  }, [contextTeamId, mode, direction, internalDirection, transferType, season, hideExtensions]);
 
   const query = useMemo((): TransferQueryParams => {
     const base: TransferQueryParams = {
@@ -343,7 +354,11 @@ export default function TransferPage() {
     setPage(1);
   }
 
-  const items = data?.data ?? [];
+  const items = (data?.data ?? []).filter(
+    (transfer) =>
+      !hideExtensions ||
+      !(transfer.contractExtension || transfer.fromClubId === transfer.toClubId),
+  );
   const pagination = data?.pagination;
   const showDir = mode === "club";
   const showMovement = mode === "internal";
@@ -393,7 +408,9 @@ export default function TransferPage() {
       <div
         className={`flex flex-wrap items-center ${showDirectionTabs ? "justify-between" : "justify-end"} border-b border-outline-variant pb-4 mb-4 gap-3`}
       >
-        {showDirectionTabs && (
+        {/* Direction-tabs pill renders only when it has tabs (club/internal);
+            in "all" mode the row stays justify-end with no empty bordered box. */}
+        {(mode === "club" || mode === "internal") && (
           <div className="flex bg-surface-container-low p-1 rounded-lg border border-outline-variant">
           {mode === "club" &&
             DIRECTION_TABS.map((tab) => (
@@ -427,6 +444,21 @@ export default function TransferPage() {
         )}
 
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setHideExtensions((value) => !value)}
+            aria-pressed={hideExtensions}
+            className={`flex items-center gap-1.5 appearance-none rounded px-3 py-1.5 text-body-sm font-body-sm focus:outline-none focus:border-primary transition-colors cursor-pointer ${
+              hideExtensions
+                ? "bg-primary-container text-on-primary-container border border-outline-variant"
+                : "bg-surface-container-low text-on-surface-variant border border-outline-variant"
+            }`}
+          >
+            <span className="material-symbols-outlined text-[16px]">
+              {hideExtensions ? "visibility_off" : "visibility"}
+            </span>
+            Hide extensions
+          </button>
           <div className="relative">
             <select
               value={season}

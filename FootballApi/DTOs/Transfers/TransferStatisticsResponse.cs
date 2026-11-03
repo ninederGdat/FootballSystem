@@ -12,4 +12,5 @@ public sealed record TransferStatisticsResponse
     public int PermanentSellCount { get; init; }
     public int LoanInCount { get; init; }
     public int LoanOutCount { get; init; }
+    public int ContractExtensionCount { get; init; }
 }

@@ -13,7 +13,8 @@ public static class TransferStatisticsMapper
         int permanentBuyCount,
         int permanentSellCount,
         int loanInCount,
-        int loanOutCount)
+        int loanOutCount,
+        int contractExtensionCount = 0)
     {
         return new TransferStatisticsResponse
         {
@@ -26,7 +27,8 @@ public static class TransferStatisticsMapper
             PermanentBuyCount = permanentBuyCount,
             PermanentSellCount = permanentSellCount,
             LoanInCount = loanInCount,
-            LoanOutCount = loanOutCount
+            LoanOutCount = loanOutCount,
+            ContractExtensionCount = contractExtensionCount
         };
     }
 }

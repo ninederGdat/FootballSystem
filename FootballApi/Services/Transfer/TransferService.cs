@@ -201,6 +201,11 @@ namespace FootballApi.Services.Transfer
                 range.ToDateExclusive!.Value,
                 query.OnLoan,
                 ct);
+
+            // Gia hạn hợp đồng không phải chuyển nhượng: không tính vào mua/bán/mượn/phí, chỉ đếm riêng.
+            var contractExtensionCount = transfers.Count(IsContractExtension);
+            transfers = transfers.Where(x => !IsContractExtension(x)).ToList();
+
             var permanentBuys = transfers
                 .Where(x => x.ToClubId == teamId && !x.OnLoan)
                 .ToList();
@@ -217,10 +222,12 @@ namespace FootballApi.Services.Transfer
                 permanentBuys.Count,
                 permanentSales.Count,
                 transfers.Count(x => x.ToClubId == teamId && x.OnLoan),
-                transfers.Count(x => x.FromClubId == teamId && x.OnLoan));
+                transfers.Count(x => x.FromClubId == teamId && x.OnLoan),
+                contractExtensionCount);
+
         }
 
-
+        private static bool IsContractExtension(TransferClean x) => x.ContractExtension || x.FromClubId == x.ToClubId;
 
         public static string MaptoStatus(string transferType, long teamId, long toClubId)
         {

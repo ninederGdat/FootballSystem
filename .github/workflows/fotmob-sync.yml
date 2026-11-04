@@ -1,8 +1,10 @@
-name: Fotmob Daily Sync
+name: Fotmob Weekly Sync
 
 on:
   schedule:
-    - cron: "0 23 * * 1" # Thứ Hai 23:00 UTC = Thứ Ba 06:00 sáng giờ VN
+    # GitHub Actions dùng giờ UTC.
+    # Thứ Ba 02:00 UTC = Thứ Ba 09:00 sáng giờ VN (UTC+7), chạy mỗi tuần một lần.
+    - cron: "0 2 * * 2"
   workflow_dispatch:
 
 jobs:
@@ -35,4 +37,3 @@ jobs:
           SUPABASE__URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE__ANONKEY: ${{ secrets.SUPABASE_ANON_KEY }}
           SUPABASE__SERVICEROLEKEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          PG_DEBUG: "1"

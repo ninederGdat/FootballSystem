@@ -12,7 +12,7 @@ import type {
   MatchSummaryDTO,
 } from "../types/match";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 type SortDir = "asc" | "desc";
 
@@ -119,12 +119,12 @@ function statusBadge(status: MatchStatus): {
 // (homeOrAway + scores). Internal Chelsea-Strasbourg fixtures and rows
 // without scores render neutral (constraint 3). Columns are always stored
 // as "home - away" regardless of which club the row describes.
-function scorePill(
-  match: MatchSummaryDTO,
-): { text: string; pillClass: string } {
+function scorePill(match: MatchSummaryDTO): {
+  text: string;
+  pillClass: string;
+} {
   const { scoreHome, scoreAway } = match;
-  const internal =
-    isTracked(match.teamId) && isTracked(match.opponentTeamId);
+  const internal = isTracked(match.teamId) && isTracked(match.opponentTeamId);
 
   if (scoreHome === null || scoreAway === null) {
     return {
@@ -183,10 +183,7 @@ function clubBadgeClass(
   return "w-7 h-7 rounded-full bg-surface-container-highest text-on-surface-variant font-data-mono text-data-mono flex items-center justify-center font-semibold";
 }
 
-function clubNameClass(
-  clubId: number | null,
-  viewedIds: number[],
-): string {
+function clubNameClass(clubId: number | null, viewedIds: number[]): string {
   if (clubId != null && viewedIds.includes(clubId)) {
     return "font-semibold text-primary";
   }
@@ -209,10 +206,7 @@ export function MatchListPage() {
   // Server-side filter (MatchRepository opponent_name LIKE). Debounced so
   // typing does not fire a request per keystroke; the query resets page.
   useEffect(() => {
-    const t = setTimeout(
-      () => setDebouncedOpponent(opponentInput.trim()),
-      400,
-    );
+    const t = setTimeout(() => setDebouncedOpponent(opponentInput.trim()), 400);
     return () => clearTimeout(t);
   }, [opponentInput]);
 
@@ -231,17 +225,20 @@ export function MatchListPage() {
       competitionId: competitionId === "all" ? undefined : competitionId,
       opponent: debouncedOpponent === "" ? undefined : debouncedOpponent,
     }),
-    [page, status, sort, seasonCode, contextTeamId, scope, competitionId, debouncedOpponent],
+    [
+      page,
+      status,
+      sort,
+      seasonCode,
+      contextTeamId,
+      scope,
+      competitionId,
+      debouncedOpponent,
+    ],
   );
 
-  const {
-    data,
-    isLoading,
-    isError,
-    error,
-    isFetching,
-    refetch,
-  } = useMatches(query);
+  const { data, isLoading, isError, error, isFetching, refetch } =
+    useMatches(query);
 
   // GET /api/competitions - CompetitionsController. Used to drive the
   // dropdown for real instead of the old hand-copied static list.
@@ -249,17 +246,13 @@ export function MatchListPage() {
     useCompetitions();
 
   const competitionOptions = useMemo(
-    () =>
-      competitionsData?.data.map((c) => ({ id: c.id, name: c.name })) ?? [],
+    () => competitionsData?.data.map((c) => ({ id: c.id, name: c.name })) ?? [],
     [competitionsData],
   );
 
   const items = data?.data ?? [];
 
-  const monthGroups = useMemo(
-    () => groupByMonth(items),
-    [items],
-  );
+  const monthGroups = useMemo(() => groupByMonth(items), [items]);
 
   const totalCount = data?.pagination.totalItems ?? 0;
   const totalPages = Math.max(1, data?.pagination.totalPages ?? 1);
@@ -268,7 +261,9 @@ export function MatchListPage() {
   // scope all shows both tracked clubs primary, context shows only one).
   const viewedIds = useMemo(
     () =>
-      scope === "context" ? [contextTeamId] : TRACKED_TEAMS.map((t) => t.teamId),
+      scope === "context"
+        ? [contextTeamId]
+        : TRACKED_TEAMS.map((t) => t.teamId),
     [scope, contextTeamId],
   );
 
@@ -521,7 +516,8 @@ export function MatchListPage() {
             Failed to load matches
           </h3>
           <p className="font-body-sm text-body-sm text-on-surface-variant max-w-md mb-5">
-            Unable to retrieve match fixtures{errorMessage ? `: ${errorMessage}` : ""}
+            Unable to retrieve match fixtures
+            {errorMessage ? `: ${errorMessage}` : ""}
           </p>
           <button
             type="button"
@@ -559,7 +555,8 @@ export function MatchListPage() {
 
       {/* Month cards. Server orders match_date asc, match_id asc; the
           grouping below only re-chunks the current page rows. */}
-      {!isLoading && !isError &&
+      {!isLoading &&
+        !isError &&
         monthGroups.map(([monthLabel, matches]) => (
           <div
             key={`group-${monthLabel}`}
@@ -641,7 +638,9 @@ export function MatchListPage() {
                           )}
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <span className={`${statusPillBase} ${badge.pillClass}`}>
+                          <span
+                            className={`${statusPillBase} ${badge.pillClass}`}
+                          >
                             {badge.dotClass && (
                               <span
                                 className={`w-1.5 h-1.5 rounded-full mr-1.5 ${badge.dotClass}`}
@@ -668,9 +667,8 @@ export function MatchListPage() {
       {!isLoading && !isError && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-xl bg-surface-container-low text-on-surface-variant shadow-sm">
           <div className="font-data-mono text-body-sm">
-            Showing{" "}
-            <strong className="text-on-surface">{items.length}</strong> of{" "}
-            <strong className="text-on-surface">{totalCount}</strong> matches
+            Showing <strong className="text-on-surface">{items.length}</strong>{" "}
+            of <strong className="text-on-surface">{totalCount}</strong> matches
             {isFetching && !isLoading ? " · refreshing..." : ""}
           </div>
           <div className="flex items-center gap-1.5">

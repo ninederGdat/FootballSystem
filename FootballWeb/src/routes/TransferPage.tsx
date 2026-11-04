@@ -22,7 +22,7 @@ import { getTrackedTeam, TRACKED_TEAMS } from "../lib/teams";
 type Mode = "club" | "all" | "internal";
 type InternalDirection = "all" | "ab" | "ba";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 8;
 const CLUB_A = TRACKED_TEAMS[0];
 const CLUB_B = TRACKED_TEAMS[1];
 
@@ -245,7 +245,9 @@ function InternalKpiRow({ kpi }: { kpi: InternalKpiState }) {
             <p className="font-data-mono text-3xl font-semibold text-on-surface">
               {card.value}
             </p>
-            <p className="mt-2 text-xs text-on-surface-variant">{card.detail}</p>
+            <p className="mt-2 text-xs text-on-surface-variant">
+              {card.detail}
+            </p>
           </div>
         </section>
       ))}
@@ -288,7 +290,15 @@ export default function TransferPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [contextTeamId, mode, direction, internalDirection, transferType, season, hideExtensions]);
+  }, [
+    contextTeamId,
+    mode,
+    direction,
+    internalDirection,
+    transferType,
+    season,
+    hideExtensions,
+  ]);
 
   const query = useMemo((): TransferQueryParams => {
     const base: TransferQueryParams = {
@@ -307,15 +317,31 @@ export default function TransferPage() {
     if (mode === "internal") {
       const internal: TransferQueryParams = { ...base, internalOnly: true };
       if (internalDirection === "ab") {
-        return { ...internal, fromClubId: CLUB_A.teamId, toClubId: CLUB_B.teamId };
+        return {
+          ...internal,
+          fromClubId: CLUB_A.teamId,
+          toClubId: CLUB_B.teamId,
+        };
       }
       if (internalDirection === "ba") {
-        return { ...internal, fromClubId: CLUB_B.teamId, toClubId: CLUB_A.teamId };
+        return {
+          ...internal,
+          fromClubId: CLUB_B.teamId,
+          toClubId: CLUB_A.teamId,
+        };
       }
       return internal;
     }
     return base;
-  }, [page, season, transferType, mode, direction, internalDirection, contextTeamId]);
+  }, [
+    page,
+    season,
+    transferType,
+    mode,
+    direction,
+    internalDirection,
+    contextTeamId,
+  ]);
 
   const { data, isLoading, isError, error } = useTransfers(query);
 
@@ -357,7 +383,9 @@ export default function TransferPage() {
   const items = (data?.data ?? []).filter(
     (transfer) =>
       !hideExtensions ||
-      !(transfer.contractExtension || transfer.fromClubId === transfer.toClubId),
+      !(
+        transfer.contractExtension || transfer.fromClubId === transfer.toClubId
+      ),
   );
   const pagination = data?.pagination;
   const showDir = mode === "club";
@@ -412,34 +440,34 @@ export default function TransferPage() {
             in "all" mode the row stays justify-end with no empty bordered box. */}
         {(mode === "club" || mode === "internal") && (
           <div className="flex bg-surface-container-low p-1 rounded-lg border border-outline-variant">
-          {mode === "club" &&
-            DIRECTION_TABS.map((tab) => (
-              <button
-                key={tab.value}
-                onClick={() => setDirection(tab.value)}
-                className={
-                  direction === tab.value
-                    ? "px-4 py-1.5 rounded bg-surface border border-outline-variant shadow-sm text-on-surface font-body-sm text-body-sm font-medium"
-                    : "px-4 py-1.5 rounded text-on-surface-variant hover:text-on-surface font-body-sm text-body-sm transition-colors"
-                }
-              >
-                {tab.label}
-              </button>
-            ))}
-          {mode === "internal" &&
-            internalTabs.map((tab) => (
-              <button
-                key={tab.value}
-                onClick={() => setInternalDirection(tab.value)}
-                className={
-                  internalDirection === tab.value
-                    ? "px-4 py-1.5 rounded bg-surface border border-outline-variant shadow-sm text-on-surface font-body-sm text-body-sm font-medium"
-                    : "px-4 py-1.5 rounded text-on-surface-variant hover:text-on-surface font-body-sm text-body-sm transition-colors"
-                }
-              >
-                {tab.label}
-              </button>
-            ))}
+            {mode === "club" &&
+              DIRECTION_TABS.map((tab) => (
+                <button
+                  key={tab.value}
+                  onClick={() => setDirection(tab.value)}
+                  className={
+                    direction === tab.value
+                      ? "px-4 py-1.5 rounded bg-surface border border-outline-variant shadow-sm text-on-surface font-body-sm text-body-sm font-medium"
+                      : "px-4 py-1.5 rounded text-on-surface-variant hover:text-on-surface font-body-sm text-body-sm transition-colors"
+                  }
+                >
+                  {tab.label}
+                </button>
+              ))}
+            {mode === "internal" &&
+              internalTabs.map((tab) => (
+                <button
+                  key={tab.value}
+                  onClick={() => setInternalDirection(tab.value)}
+                  className={
+                    internalDirection === tab.value
+                      ? "px-4 py-1.5 rounded bg-surface border border-outline-variant shadow-sm text-on-surface font-body-sm text-body-sm font-medium"
+                      : "px-4 py-1.5 rounded text-on-surface-variant hover:text-on-surface font-body-sm text-body-sm transition-colors"
+                  }
+                >
+                  {tab.label}
+                </button>
+              ))}
           </div>
         )}
 

@@ -35,3 +35,4 @@ jobs:
           SUPABASE__URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE__ANONKEY: ${{ secrets.SUPABASE_ANON_KEY }}
           SUPABASE__SERVICEROLEKEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          PG_DEBUG: "1"

@@ -35,13 +35,51 @@ public class SupabaseClientFactory
                     ? "Supabase:ServiceRoleKey is not configured"
                     : "Supabase:AnonKey is not configured");
         }
+
+        if (PgDebugEnabled)
+        {
+            // Chỉ log "hình dạng" của URL/key, không bao giờ log giá trị key.
+            Console.WriteLine(
+            $"[PG-DEBUG] client={(useServiceRole ? "service_role" : "anon")} " +
+            $"url={supabaseUrl} keyLen={supabaseKey.Length} keyPrefix={supabaseKey[..Math.Min(8, supabaseKey.Length)]} " +
+            $"keyHasWhitespace={supabaseKey != supabaseKey.Trim()}");
+        }
+
         // ETL worker: no realtime WebSocket or token refresh — faster first DB use at job time.
         var options = new SupabaseOptions
         {
             AutoRefreshToken = false,
             AutoConnectRealtime = false
         };
-        return new Supabase.Client(supabaseUrl, supabaseKey, options);
+        var client = new Supabase.Client(supabaseUrl, supabaseKey, options);
+
+        if (PgDebugEnabled)
+            RegisterPgDebugHook(client);
+
+        return client;
+    }
+
+    // TODO(debug): tạm thời, xoá sau khi tìm ra nguyên nhân PGRST102 trên GitHub Actions.
+    // Bật bằng biến môi trường PG_DEBUG=1.
+    private static bool PgDebugEnabled => Environment.GetEnvironmentVariable("PG_DEBUG") == "1";
+
+    private static int _pgDebugHookRegistered;
+
+    private static void RegisterPgDebugHook(Supabase.Client client)
+    {
+        // Hooks.Instance là singleton toàn process → chỉ đăng ký một lần.
+        if (Interlocked.Exchange(ref _pgDebugHookRegistered, 1) == 1)
+            return;
+
+        client.Postgrest.AddRequestPreparedHandler(
+            (sender, clientOptions, method, url, serializerSettings, data, headers) =>
+             {
+                 // Chỉ log method, URL, body và các header an toàn — KHÔNG log apikey/Authorization.
+                 var body = Newtonsoft.Json.JsonConvert.SerializeObject(data);
+                 headers.TryGetValue("Prefer", out var prefer);
+                 Console.WriteLine(
+                     $"[PG-DEBUG] {method} {url} prefer='{prefer}' bodyLen={body.Length} body={body}");
+             });
     }
 }
 

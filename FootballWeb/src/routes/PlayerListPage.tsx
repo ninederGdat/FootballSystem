@@ -15,7 +15,7 @@ import type { PaginationMetadata } from "../types/transfer";
 import { formatMarketValue } from "../lib/format";
 
 import { useContextTeam } from "../features/team-context/TeamContext";
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 8;
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/);

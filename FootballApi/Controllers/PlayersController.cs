@@ -33,11 +33,11 @@ public class PlayersController : ControllerBase
     public async Task<ActionResult<PagedResponse<PlayerAppearanceResponse>>> GetPlayerAppearances(
         int playerId,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int pageSize = 8,
         CancellationToken ct = default)
     {
         if (page < 1) page = 1;
-        if (pageSize is < 1 or > 100) pageSize = 20;
+        if (pageSize is < 1 or > 100) pageSize = 8;
 
         var result = await _playerService.GetPlayerAppearancesAsync(playerId, page, pageSize, ct);
         return Ok(result);
@@ -54,7 +54,7 @@ public class PlayersController : ControllerBase
         [FromQuery] string? status,
         [FromQuery] string? transferStatus,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int pageSize = 8,
         CancellationToken ct = default)
     {
 
@@ -74,7 +74,7 @@ public class PlayersController : ControllerBase
         }
 
         if (page < 1) page = 1;
-        if (pageSize is < 1 or > 100) pageSize = 20;
+        if (pageSize is < 1 or > 100) pageSize = 8;
 
         var query = new PlayerSearchQuery
         {

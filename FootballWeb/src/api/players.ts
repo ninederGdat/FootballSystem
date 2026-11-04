@@ -37,7 +37,7 @@ export function searchPlayers(query: PlayerSearchQuery, signal?: AbortSignal) {
       status: query.status,
       transferStatus: query.transferStatus,
       page: query.page ?? 1,
-      pageSize: query.pageSize ?? 20,
+      pageSize: query.pageSize ?? 8,
     },
     { signal },
   );

@@ -8,6 +8,7 @@ using FootballApi.Repositories.Transfer;
 using FootballApi.Services.Season;
 using FootballApi.Services.Transfer;
 using FootballSystem.Shared.Models.Clean;
+using FootballSystem.Shared.Players;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
@@ -229,11 +230,18 @@ public class TransferStatisticsTests
             return Task.FromResult(result);
         }
 
+        public Task<Dictionary<long, TransferClean>> GetLatestByPlayerIdsAsync(
+            IEnumerable<long> playerIds,
+            CancellationToken ct) => throw new NotImplementedException();
+
         public Task<(IReadOnlyList<TransferClean> Items, int TotalCount)> SearchAsync(
             string playerName,
             long? playerId,
             long? fromClubId,
             long? toClubId,
+            long? leagueId,
+            string? transferStatus,
+            IReadOnlyCollection<long>? playerIds,
             bool? onLoan,
             bool? contractExtension,
             string transferType,
@@ -261,6 +269,9 @@ public class TransferStatisticsTests
                 : new List<TeamClean>();
             return Task.FromResult(teams);
         }
+
+        public Task<List<TeamClean>> GetAllAsync(CancellationToken ct) =>
+            Task.FromResult(team is null ? new List<TeamClean>() : new List<TeamClean> { team });
     }
 
     private sealed class StubPlayerRepository : IPlayerRepository
@@ -269,10 +280,11 @@ public class TransferStatisticsTests
         public Task<List<PlayerClean>> GetByIdsAsync(IEnumerable<long> playerIds, CancellationToken ct) => Task.FromResult(new List<PlayerClean>());
         public Task<(List<PlayerClean> Items, int TotalCount)> SearchAsync(
             string? search,
-            long? teamId,
+            long teamId,
             string? positionCode,
             string? nationality,
             string? transferStatus,
+            PlayerRelation? relation,
             int page,
             int pageSize,
             CancellationToken ct) => Task.FromResult((new List<PlayerClean>(), 0));

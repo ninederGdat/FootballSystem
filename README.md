@@ -1,5 +1,7 @@
 # FootballSystem
 
+![CI](https://github.com/ninederGdat/FootballSystem/actions/workflows/ci.yml/badge.svg)
+
 A full-stack football data application. A scheduled ETL worker pulls club, player, match, lineup and transfer data from Fotmob into PostgreSQL (Supabase), a read-only ASP.NET Core API serves it, and a React web app presents it.
 
 The system currently tracks two clubs owned by the same group: **Chelsea FC** (Fotmob id `8455`) and **RC Strasbourg Alsace** (`9848`). Players loaned or transferred between them are handled explicitly, so the same data can be viewed from either club's point of view.

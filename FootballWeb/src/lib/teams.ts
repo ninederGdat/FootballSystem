@@ -1,11 +1,11 @@
-// TODO(backend) GET /api/teams is not implemented yet; the tracked-club list is
-// hardcoded here until the backend exposes it.
+// The tracked-club list is hardcoded. GET /api/teams exists but does not expose
+// abbr or leagueName yet; switch to the API once those fields are available.
 
 export interface TrackedTeam {
   teamId: number;
   teamName: string;
-  abbr: string; // hiện trong avatar của ClubSwitcher
-  leagueName: string; // TODO(backend): lấy từ API khi có endpoint teams/competitions
+  abbr: string; // shown in the ClubSwitcher avatar
+  leagueName: string;
 }
 
 export const TRACKED_TEAMS: TrackedTeam[] = [

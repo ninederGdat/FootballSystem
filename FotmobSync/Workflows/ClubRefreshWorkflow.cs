@@ -89,10 +89,10 @@ public class ClubRefreshWorkflow
         });
 
         await RunPhaseAsync("PHASE 4: Matches", async () =>
-  {
-      foreach (var s in snapshots)
-          await _matchSyncService.SyncAsync(s);
-  });
+        {
+            foreach (var s in snapshots)
+                await _matchSyncService.SyncAsync(s, trackedIds);
+        });
 
         await RunPhaseAsync("PHASE 5: Lineup backfill", async () =>
         {

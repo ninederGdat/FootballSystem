@@ -64,17 +64,30 @@ public class MatchService : IMatchSyncService
         }
     }
 
-    public async Task SyncAsync(TeamDataSnapshot snapshot)
+    public async Task SyncAsync(TeamDataSnapshot snapshot, IReadOnlySet<long> trackedIds)
     {
-        await SyncMatchesAsync(snapshot);
+        await SyncMatchesAsync(snapshot, trackedIds);
     }
 
-    public async Task SyncMatchesAsync(TeamDataSnapshot snapshot)
+    public async Task SyncMatchesAsync(TeamDataSnapshot snapshot, IReadOnlySet<long> trackedIds)
     {
         try
         {
             var rawList = ExtractFixtures(snapshot);
-            var cleanList = rawList.ToCleanList(snapshot.TeamId);
+            var ownedRawList = rawList
+                .Where(r => r.IsOwnedBy(snapshot.TeamId, trackedIds))
+                .ToList();
+
+            var notOwned = rawList.Count - ownedRawList.Count;
+            if (notOwned > 0)
+            {
+                _logger.LogInformation(
+                    "Team {TeamId}: bỏ qua {Count} fixture không thuộc sở hữu của team này (trận nội bộ do đội chủ nhà ghi).",
+                    snapshot.TeamId,
+                    notOwned);
+            }
+
+            var cleanList = ownedRawList.ToCleanList(snapshot.TeamId);
             cleanList = cleanList
                     .OrderBy(x => x.MatchDate)
                     .ToList();

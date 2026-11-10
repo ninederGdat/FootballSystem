@@ -9,6 +9,27 @@ namespace FotmobSync.Mappers;
 /// </summary>
 public static class MatchMapper
 {
+
+    /// <summary>
+    /// Quy tắc chủ sở hữu hàng <c>matches</c>: một trận chỉ được ghi bởi đúng một CLB theo dõi.
+    /// Đội chủ nhà luôn là chủ nếu nó là <paramref name="teamId"/>; đội khách chỉ là chủ
+    /// khi đội chủ nhà không nằm trong <paramref name="trackedIds"/>.
+    /// Nhờ đó trận nội bộ (cả hai đội đều được theo dõi) chỉ có một hàng, không đổi <c>team_id</c> giữa các lần sync.
+    /// </summary>
+    public static bool IsOwnedBy(this MatchRaw? raw, long teamId, IReadOnlySet<long> trackedIds)
+    {
+        if (raw?.Home == null || raw.Away == null)
+            return false;
+
+        if (raw.Home.Id == teamId)
+            return true;
+
+        if (raw.Away.Id != teamId)
+            return false;
+
+        return !trackedIds.Contains(raw.Home.Id);
+    }
+
     public static MatchClean? ToClean(this MatchRaw? raw, long teamId)
     {
         if (raw == null || raw.Id == 0 || raw.Home == null || raw.Away == null)

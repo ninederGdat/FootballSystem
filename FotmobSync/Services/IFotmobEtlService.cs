@@ -21,7 +21,7 @@ public interface ITeamSyncService
 
 public interface IMatchSyncService
 {
-    Task SyncAsync(TeamDataSnapshot snapshot);
+    Task SyncAsync(TeamDataSnapshot snapshot, IReadOnlySet<long> trackedIds);
 }
 
 public interface ISquadSyncService

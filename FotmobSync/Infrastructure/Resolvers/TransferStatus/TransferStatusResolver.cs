@@ -32,6 +32,11 @@ public class TransferStatusResolver : ITransferStatusResolver
         return results;
     }
 
+    // FIFA: một khoản mượn kéo dài tối đa 1 năm. Khi Fotmob không có ngày kết thúc (period_end null),
+    // coi là còn hiệu lực đến 1 năm sau ngày bắt đầu, thay vì coi là đã hết hạn.
+    private static DateTime GetLoanEnd(TransferClean t) =>
+        t.PeriodEnd ?? (t.PeriodStart ?? t.TransferDate).AddYears(1);
+
     private static PlayerTransferStatus ResolveOne(
     TransferClean t, DateTime now, IReadOnlySet<long> tracked)
     {
@@ -39,7 +44,7 @@ public class TransferStatusResolver : ITransferStatusResolver
         var toTracked = tracked.Contains(t.ToClubId);
 
         // 1. Cho mượn đang hiệu lực
-        if (t.OnLoan && t.PeriodEnd > now)
+        if (t.OnLoan && GetLoanEnd(t) > now)
         {
             return fromTracked
                 ? Build(t, parent: t.FromClubId, current: t.ToClubId, "loaned")

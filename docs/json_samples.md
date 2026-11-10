@@ -400,9 +400,39 @@ The same transfer structure is used for both permanent transfers and loans. The 
   "goalDescriptionKey": "penalty",
   "isPenaltyShootoutEvent": false,
   "assistPlayerId": null
+
+}
+{
+  "type": "PenaltyShootout",
+  "card": null,
+  "cardDescription": null,
+  "cardReason": null,
+  "missedPenaltyOutcome": null,
+  "time": 121,
+  "addedTime": null,
+  "overloadTime": null,
+  "ownGoal": null,
+  "goalDescription": null,
+  "goalDescriptionKey": null,
+  "penaltyScore": [
+    6,
+    5
+  ],
+  "player": {
+    "id": null,
+    "profileUrl": ""
+  },
+  "homeScore": 7,
+  "awayScore": 6,
+  "swap": [
+    {},
+    {}
+  ],
+  "VAR": null
 }
 ```
 
 Card events use the same common fields with `type: "Card"`, `card` (`"Yellow"`, `"YellowRed"`, or `"Red"`), and optional `cardDescription`; the goal-specific fields may be absent.
+Penalty shootout: FotMob sends a single summary event alongside the events array. `penaltyScore = [home, away]`; `homeScore` and `awayScore` are the cumulative scores including the penalty shootout. There is no player or `eventId`.
 
 ---

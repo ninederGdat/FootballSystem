@@ -241,10 +241,14 @@ competition_id: bigint, foreign key -> competitions.competition_id
 competition_name: text
 match_date: timestamptz, not null
 home_or_away: text, CHECK in ('home', 'away')
-score_home: integer
+score_home: integer   (tỉ số Fotmob trả trong fixtures, cộng dồn: đã gồm luân lưu nếu có)
 score_away: integer
+penalty_home: integer, nullable (điểm luân lưu của chủ nhà; null = không có luân lưu)
+penalty_away: integer, nullable (cả hai cùng null hoặc cùng có giá trị, CHECK)
+//do match-detail sync ghi từ event PenaltyShootout, tách khỏi model upsert của fixtures để fixtures sync không ghi đè. API công bố tỉ số hết giờ = score trừ penalty.
 status: text, not null, default 'UPCOMING'
 last_updated: timestamptz, default now()
+
 ```
 
 Stores schedules, results, opponent details, competition metadata and status for the tracked team.

@@ -132,11 +132,18 @@ CREATE TABLE IF NOT EXISTS public.matches (
   score_away       integer,
   status           text NOT NULL DEFAULT 'UPCOMING',
   last_updated     timestamptz DEFAULT now(),
+  penalty_home     integer,   -- shootout score; null = no shootout (score_home/away include it)
+  penalty_away     integer,
   CONSTRAINT matches_pkey PRIMARY KEY (match_id),
   CONSTRAINT matches_team_id_fkey
     FOREIGN KEY (team_id) REFERENCES public.teams (team_id),
   CONSTRAINT matches_competition_id_fkey
     FOREIGN KEY (competition_id) REFERENCES public.competitions (competition_id)
+  CONSTRAINT matches_penalty_check CHECK (
+    (penalty_home IS NULL) = (penalty_away IS NULL)
+    AND COALESCE(penalty_home, 0) >= 0
+    AND COALESCE(penalty_away, 0) >= 0
+  ),
 );
 
 CREATE TABLE IF NOT EXISTS public.lineups (

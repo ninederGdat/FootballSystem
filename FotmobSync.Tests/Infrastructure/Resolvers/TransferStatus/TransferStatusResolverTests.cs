@@ -105,20 +105,45 @@ public class TransferStatusResolverTests
         Assert.Equal(expectedCurrentClubId, status.CurrentClubId);
     }
 
-    [Fact]
-    public void Resolve_LoanWithoutPeriodEnd_ReturnsCurrentAtParentClub()
+    [Theory]
+    [InlineData(30, "loaned", 10, 20)]
+    [InlineData(364, "loaned", 10, 20)]
+    [InlineData(365, "current", 10, 10)]   // đúng 1 năm: không còn hiệu lực (so sánh lớn hơn nghiêm ngặt)
+    public void Resolve_LoanWithoutPeriodEnd_IsActiveForUpToOneYear(
+       int transferDaysAgo,
+       string expectedStatus,
+       long expectedParentClubId,
+       long expectedCurrentClubId)
     {
         var result = Resolve(CreateTransfer(
             fromClubId: 10,
             toClubId: 20,
             onLoan: true,
-            periodEnd: null));
+            periodEnd: null,
+            transferDateDaysAgo: transferDaysAgo));
 
         var status = Assert.Single(result);
-        Assert.Equal("current", status.status);
+        Assert.Equal(expectedStatus, status.status);
+        Assert.Equal(expectedParentClubId, status.ParentClubId);
+        Assert.Equal(expectedCurrentClubId, status.CurrentClubId);
+    }
+
+    [Fact]
+    public void Resolve_LoanWithoutPeriodEnd_CountsFromPeriodStartWhenPresent()
+    {
+        var transfer = CreateTransfer(
+            fromClubId: 10,
+            toClubId: 20,
+            onLoan: true,
+            periodEnd: null,
+            transferDateDaysAgo: 400);
+        transfer.PeriodStart = CurrentDate.AddDays(-30);
+
+        var status = Assert.Single(Resolve(transfer));
+
+        Assert.Equal("loaned", status.status);
         Assert.Equal(10, status.ParentClubId);
-        Assert.Equal(10, status.CurrentClubId);
-        // REVIEW: A missing loan end date is treated as expired rather than as an active loan of unknown duration.
+        Assert.Equal(20, status.CurrentClubId);
     }
 
     [Theory]

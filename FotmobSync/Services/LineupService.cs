@@ -61,7 +61,8 @@ public class LineupSyncService : ILineupSyncService
         if (formationId is null)
         {
             _logger.LogWarning(
-                "Formation {Formation} not found.",
+                "Match {MatchId}: formation {Formation} could not be resolved; lineup skipped.",
+                snapshot.MatchId,
                 formationName);
 
             return null;

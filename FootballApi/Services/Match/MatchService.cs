@@ -123,8 +123,10 @@ public class MatchService : IMatchService
                : match.OpponentName,
             HomeOrAway = flip ? FlipHomeOrAway(match.HomeOrAway) : match.HomeOrAway,
             CompetitionName = match.CompetitionName,
-            ScoreHome = match.ScoreHome,
-            ScoreAway = match.ScoreAway,
+            ScoreHome = match.RegularScoreHome(),
+            ScoreAway = match.RegularScoreAway(),
+            PenaltyHome = match.PenaltyHome,
+            PenaltyAway = match.PenaltyAway,
             Status = match.Status
         };
     }

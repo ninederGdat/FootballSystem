@@ -14,6 +14,8 @@ public record MatchDetailResponse(
     string? HomeOrAway,
     int? ScoreHome,
     int? ScoreAway,
+    int? PenaltyHome,
+    int? PenaltyAway,
     string Status,
     List<MatchEventResponse> Events,
     LineupResponse? Lineup)
@@ -30,8 +32,10 @@ public record MatchDetailResponse(
         clean.CompetitionName,
         clean.MatchDate,
         clean.HomeOrAway,
-        clean.ScoreHome,
-        clean.ScoreAway,
+        clean.RegularScoreHome(),
+        clean.RegularScoreAway(),
+        clean.PenaltyHome,
+        clean.PenaltyAway,
         clean.Status,
         events,
         lineup);

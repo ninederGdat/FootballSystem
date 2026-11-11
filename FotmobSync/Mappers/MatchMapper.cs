@@ -82,6 +82,25 @@ public static class MatchMapper
     public static List<MatchClean> ToCleanList(this IEnumerable<MatchRaw?> rawList, long teamId) =>
         rawList.Select(r => r.ToClean(teamId)).Where(c => c != null).Select(c => c!).ToList();
 
+    public static MatchUpsert ToUpsert(this MatchClean clean) => new()
+    {
+        MatchId = clean.MatchId,
+        TeamId = clean.TeamId,
+        OpponentTeamId = clean.OpponentTeamId,
+        OpponentName = clean.OpponentName,
+        CompetitionId = clean.CompetitionId,
+        CompetitionName = clean.CompetitionName,
+        MatchDate = clean.MatchDate,
+        HomeOrAway = clean.HomeOrAway,
+        ScoreHome = clean.ScoreHome,
+        ScoreAway = clean.ScoreAway,
+        Status = clean.Status,
+        LastUpdated = clean.LastUpdated
+    };
+
+    public static List<MatchUpsert> ToUpsertList(this IEnumerable<MatchClean> cleanList) =>
+        cleanList.Select(c => c.ToUpsert()).ToList();
+
     /// <summary>UPCOMING | ONGOING | FINISHED (theo .cursorrules).</summary>
     private static string MapStatus(MatchStatusRaw? status)
     {

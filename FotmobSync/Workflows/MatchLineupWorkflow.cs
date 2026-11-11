@@ -9,18 +9,21 @@ public class MatchLineupWorkflow
     private readonly ILineupSyncService _lineupSyncService;
     private readonly ILineupPlayerSyncService _lineupPlayerSyncService;
     private readonly IMatchEventSyncService _matchEventSyncService;
+    private readonly IMatchPenaltyScoreSyncService _penaltyScoreSyncService;
     private readonly ILogger<MatchLineupWorkflow> _logger;
     public MatchLineupWorkflow(
         FotmobMatchDetailModule matchModule,
         ILineupSyncService lineupSyncService,
         ILineupPlayerSyncService lineupPlayerSyncService,
         IMatchEventSyncService matchEventSyncService,
+        IMatchPenaltyScoreSyncService penaltyScoreSyncService,
         ILogger<MatchLineupWorkflow> logger)
     {
         _matchModule = matchModule;
         _lineupSyncService = lineupSyncService;
         _lineupPlayerSyncService = lineupPlayerSyncService;
         _matchEventSyncService = matchEventSyncService;
+        _penaltyScoreSyncService = penaltyScoreSyncService;
         _logger = logger;
     }
 
@@ -34,6 +37,7 @@ public class MatchLineupWorkflow
         var result = await _lineupPlayerSyncService.SyncAsync(snapshot, lineup.Id);
 
         await _matchEventSyncService.SyncAsync(snapshot, matchId);
+        await _penaltyScoreSyncService.SyncAsync(snapshot, matchId);
 
         if (!result.IsComplete)
         {

@@ -39,6 +39,12 @@ public class MatchClean : BaseModel
 
     [Column("score_away")]
     public int? ScoreAway { get; set; }
+    /// <summary>Điểm luân lưu của chủ nhà; null nếu trận không có luân lưu. Do match-detail sync ghi.</summary>
+    [Column("penalty_home")]
+    public int? PenaltyHome { get; set; }
+
+    [Column("penalty_away")]
+    public int? PenaltyAway { get; set; }
 
     /// <summary><c>UPCOMING</c>, <c>ONGOING</c>, hoặc <c>FINISHED</c>.</summary>
     [Column("status")]

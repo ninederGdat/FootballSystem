@@ -42,6 +42,9 @@ public class MatchEventRaw
 
     [JsonPropertyName("assistPlayerId")]
     public long? AssistPlayerId { get; set; }
+    /// <summary>Chỉ có ở event type "PenaltyShootout": điểm luân lưu [chủ nhà, khách].</summary>
+    [JsonPropertyName("penaltyScore")]
+    public List<int>? PenaltyScore { get; set; }
 
     // --- Card-specific (nullable vì Goal event không có các field này) ---
 

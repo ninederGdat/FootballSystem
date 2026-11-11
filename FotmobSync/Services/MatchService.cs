@@ -120,9 +120,9 @@ public class MatchService : IMatchSyncService
             if (toUpsert.Count > 0)
             {
                 await _supabase
-                    .From<MatchClean>()
+                    .From<MatchUpsert>()
                     .Upsert(
-                        toUpsert,
+                        toUpsert.ToUpsertList(),
                         new() { OnConflict = "match_id" });
 
                 _logger.LogInformation(

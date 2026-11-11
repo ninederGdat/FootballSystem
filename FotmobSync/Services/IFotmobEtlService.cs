@@ -70,6 +70,13 @@ public interface IMatchEventSyncService
         long matchId);
 }
 
+public interface IMatchPenaltyScoreSyncService
+{
+    Task SyncAsync(
+        MatchDetailSnapshot snapshot,
+        long matchId);
+}
+
 public interface ITransferSyncService
 {
     Task SyncAsync(TeamDataSnapshot snapshot, CancellationToken cancellationToken = default);

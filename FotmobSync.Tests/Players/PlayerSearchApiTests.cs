@@ -442,10 +442,6 @@ public class PlayerSearchApiTests
         public Task<List<PlayerClean>> GetPlayersByIdsAsync(List<long> playerIds, CancellationToken ct = default) =>
             throw new NotSupportedException();
 
-        public Task<(List<LineupPlayerClean> Items, int TotalCount)> GetLineupPlayersByPlayerIdAsync(
-            long playerId, int page, int pageSize, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-
         public Task<(List<PlayerAppearanceRecord> Items, int TotalCount)> GetPlayerAppearancesAsync(
             long playerId, int page, int pageSize, CancellationToken ct = default) =>
             throw new NotSupportedException();

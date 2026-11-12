@@ -7,8 +7,6 @@ public interface ILineupRepository
     Task<FormationClean?> GetFormationByIdAsync(long formationId, CancellationToken ct = default);
     Task<List<LineupPlayerClean>> GetLineupPlayersAsync(long lineupId, CancellationToken ct = default);
     Task<List<PlayerClean>> GetPlayersByIdsAsync(List<long> playerIds, CancellationToken ct = default);
-    Task<(List<LineupPlayerClean> Items, int TotalCount)> GetLineupPlayersByPlayerIdAsync(
-        long playerId, int page, int pageSize, CancellationToken ct = default);
 
     Task<(List<PlayerAppearanceRecord> Items, int TotalCount)> GetPlayerAppearancesAsync(
         long playerId, int page, int pageSize, CancellationToken ct = default);

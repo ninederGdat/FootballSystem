@@ -7,16 +7,13 @@ using FootballSystem.Shared.Models.Clean;
 public class LineupRepository : ILineupRepository
 {
     private readonly Supabase.Client _client;
-    private readonly IMatchRepository _matchRepository;
     private readonly IMatchEventRepository _matchEventRepository;
 
     public LineupRepository(
         SupabaseClientFactory factory,
-        IMatchRepository matchRepository,
         IMatchEventRepository matchEventRepository)
     {
         _client = factory.CreateAnonClient();
-        _matchRepository = matchRepository;
         _matchEventRepository = matchEventRepository;
     }
 
@@ -52,26 +49,7 @@ public class LineupRepository : ILineupRepository
         return result.Models;
     }
 
-    public async Task<(List<LineupPlayerClean> Items, int TotalCount)> GetLineupPlayersByPlayerIdAsync(
-        long playerId, int page, int pageSize, CancellationToken ct = default)
-    {
-        var offset = (page - 1) * pageSize;
 
-        var countResult = await _client.From<LineupPlayerClean>()
-            .Where(x => x.PlayerId == playerId)
-            .Count(Supabase.Postgrest.Constants.CountType.Exact, ct);
-
-        var result = await _client.From<LineupPlayerClean>()
-            .Where(x => x.PlayerId == playerId)
-            // NOTE: sort theo LineupId làm proxy cho thời gian vì Match chưa được join tại bước này.
-            // Đây là known limitation: thứ tự CHÍNH XÁC theo MatchDate chỉ đảm bảo trong phạm vi 1 trang,
-            // không đảm bảo giữa các trang. Nếu cần chính xác tuyệt đối, phải join trước khi phân trang (view/RPC).
-            .Order(x => x.LineupId, Supabase.Postgrest.Constants.Ordering.Descending)
-            .Range(offset, offset + pageSize - 1)
-            .Get(ct);
-
-        return (result.Models, countResult);
-    }
 
     public async Task<List<LineupClean>> GetByIdsAsync(List<long> lineupIds, CancellationToken ct = default)
     {
@@ -87,32 +65,34 @@ public class LineupRepository : ILineupRepository
     // Service gọi 1 method duy nhất, không cần biết cấu trúc join bên trong.
     // ---------------------------------------------------------------
     public async Task<(List<PlayerAppearanceRecord> Items, int TotalCount)> GetPlayerAppearancesAsync(
-      long playerId, int page, int pageSize, CancellationToken ct = default)
+        long playerId, int page, int pageSize, CancellationToken ct = default)
     {
-        var (pageItems, totalCount) = await GetLineupPlayersByPlayerIdAsync(playerId, page, pageSize, ct);
+        var offset = (page - 1) * pageSize;
 
-        if (pageItems.Count == 0)
-        {
+        // Đếm và lấy trang trên CÙNG view => sort theo match_date đúng trên toàn bộ dữ liệu, không chỉ trong 1 trang.
+        var totalCount = await _client.From<PlayerAppearanceViewClean>()
+            .Where(x => x.PlayerId == playerId)
+            .Count(Supabase.Postgrest.Constants.CountType.Exact, ct);
+
+        if (totalCount == 0 || offset >= totalCount)
             return (new List<PlayerAppearanceRecord>(), totalCount);
-        }
 
-        var lineupIds = pageItems
-            .Where(i => i.LineupId.HasValue)
-            .Select(i => i.LineupId!.Value)
-            .Distinct()
-            .ToList();
+        var page_ = await _client.From<PlayerAppearanceViewClean>()
+            .Where(x => x.PlayerId == playerId)
+            // Thứ tự xác định: ngày trận, rồi match_id, rồi id dòng làm tie-break => paging không trùng/sót.
+            .Order(x => x.MatchDate, Supabase.Postgrest.Constants.Ordering.Descending)
+            .Order(x => x.MatchId, Supabase.Postgrest.Constants.Ordering.Descending)
+            .Order(x => x.LineupPlayerId, Supabase.Postgrest.Constants.Ordering.Descending)
+            .Range(offset, offset + pageSize - 1)
+            .Get(ct);
 
-        var lineups = await GetByIdsAsync(lineupIds, ct);
-        var lineupsById = lineups.ToDictionary(l => l.Id, l => l);
+        var rows = page_.Models;
+        if (rows.Count == 0)
+            return (new List<PlayerAppearanceRecord>(), totalCount);
 
-        var matchIds = lineups.Select(l => l.MatchId).Distinct().ToList();
-        var matches = await _matchRepository.GetByMatchIdsAsync(matchIds, ct); // <-- tên đúng
-        var matchesById = matches
-            .GroupBy(m => m.MatchId)
-            .ToDictionary(g => g.Key, g => g.First());
+        var matchIds = rows.Select(r => r.MatchId).Distinct().ToList();
 
-        // Đếm goals/assists của playerId trong từng match, group theo match_id để tra cứu O(1).
-        // Goals: chỉ tính event_type == "goal" (loại own_goal ra khỏi thành tích ghi bàn của cầu thủ).
+        // Goals: chỉ event_type == "goal" (own_goal không tính). Assists theo AssistPlayerId.
         var events = await _matchEventRepository.GetEventsByMatchIdsAsync(matchIds, ct);
         var goalsByMatch = events
             .Where(e => e.EventType == "goal" && e.PlayerId == playerId)
@@ -123,29 +103,13 @@ public class LineupRepository : ILineupRepository
             .GroupBy(e => e.MatchId)
             .ToDictionary(g => g.Key, g => g.Count());
 
-        var items = pageItems.Select(lp =>
-        {
-            var lineup = lp.LineupId.HasValue ? lineupsById.GetValueOrDefault(lp.LineupId.Value) : null;
-            var match = lineup is not null ? matchesById.GetValueOrDefault(lineup.MatchId) : null;
-            var matchId = match?.MatchId ?? 0;
-
-            return new PlayerAppearanceRecord
-            {
-                MatchId = matchId,
-                MatchDate = match?.MatchDate ?? default,
-                OpponentName = match?.OpponentName,
-                CompetitionName = match?.CompetitionName,
-                PlayedForTeamId = match?.TeamId,
-                IsStarter = lp.IsStarter,
-                PositionCode = lp.PositionCode,
-                RoleId = lp.RoleId,
-                MinuteIn = lp.MinuteIn,
-                MinuteOut = lp.MinuteOut,
-                Goals = goalsByMatch.GetValueOrDefault(matchId, 0),
-                Assists = assistsByMatch.GetValueOrDefault(matchId, 0)
-            };
-        }).ToList();
+        var items = rows
+            .Select(r => r.ToRecord(
+                goalsByMatch.GetValueOrDefault(r.MatchId, 0),
+                assistsByMatch.GetValueOrDefault(r.MatchId, 0)))
+            .ToList();
 
         return (items, totalCount);
     }
+
 }

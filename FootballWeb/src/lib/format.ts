@@ -78,17 +78,39 @@ export function formatAge(dobIso: string | null): string {
 }
 
 // Outcome of the tracked team, derived purely from the wire's score fields
-// plus homeOrAway. Returns null when the side cannot be determined so the
+// plus homeOrAway. A level score is decided by the shootout when its score is
+// known and not level. Returns null when the side cannot be determined so the
 // caller can omit the verdict instead of guessing.
 export function matchOutcome(
   scoreHome: number,
   scoreAway: number,
   homeOrAway: string | null,
+  penaltyHome: number | null = null,
+  penaltyAway: number | null = null,
 ): "WIN" | "DRAW" | "LOSS" | null {
   if (homeOrAway !== "home" && homeOrAway !== "away") return null;
-  const our = homeOrAway === "home" ? scoreHome : scoreAway;
-  const opp = homeOrAway === "home" ? scoreAway : scoreHome;
-  if (our > opp) return "WIN";
-  if (our < opp) return "LOSS";
+  const isHome = homeOrAway === "home";
+  const our = isHome ? scoreHome : scoreAway;
+  const opp = isHome ? scoreAway : scoreHome;
+  if (our !== opp) return our > opp ? "WIN" : "LOSS";
+
+  if (
+    penaltyHome !== null &&
+    penaltyAway !== null &&
+    penaltyHome !== penaltyAway
+  ) {
+    const ourPen = isHome ? penaltyHome : penaltyAway;
+    const oppPen = isHome ? penaltyAway : penaltyHome;
+    return ourPen > oppPen ? "WIN" : "LOSS";
+  }
   return "DRAW";
+}
+
+// Shootout score as "home – away"; null when the match had no shootout.
+export function formatShootout(
+  penaltyHome: number | null | undefined,
+  penaltyAway: number | null | undefined,
+): string | null {
+  if (penaltyHome == null || penaltyAway == null) return null;
+  return `${penaltyHome} – ${penaltyAway}`;
 }

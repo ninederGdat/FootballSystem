@@ -7,7 +7,7 @@ import {
   LoadingState,
 } from "../components/common/States";
 import { SectionCard } from "../components/common/SectionCard";
-import { formatLoanDate } from "../lib/format";
+import { formatLoanDate, matchOutcome } from "../lib/format";
 import { useSeasons } from "../features/seasons/hooks";
 import { useTransferStatistics } from "../features/transfers/hooks";
 import { useMatches } from "../features/matches/hooks";
@@ -34,18 +34,28 @@ const RESULT_TONES: Record<"W" | "D" | "L", string> = {
   L: "border-rose-500/20 bg-rose-500/10 text-rose-400",
 };
 
-// Exact result rule: ours = home ? scoreHome : scoreAway, theirs = the
-// other score; W / D / L; no result when a score is null. (lib matchOutcome
-// coerces nulls, other callers keep using it — page keeps its own helper.)
+// W / D / L of the viewed club via lib matchOutcome (a shootout decides a
+// level match); no result when a score is null.
 function resultFor(match: MatchSummaryDTO): "W" | "D" | "L" | null {
-  if (match.homeOrAway !== "home" && match.homeOrAway !== "away") return null;
   if (match.scoreHome === null || match.scoreAway === null) return null;
-  const ours = match.homeOrAway === "home" ? match.scoreHome : match.scoreAway;
-  const theirs =
-    match.homeOrAway === "home" ? match.scoreAway : match.scoreHome;
-  if (ours > theirs) return "W";
-  if (ours < theirs) return "L";
-  return "D";
+  switch (
+    matchOutcome(
+      match.scoreHome,
+      match.scoreAway,
+      match.homeOrAway,
+      match.penaltyHome,
+      match.penaltyAway,
+    )
+  ) {
+    case "WIN":
+      return "W";
+    case "LOSS":
+      return "L";
+    case "DRAW":
+      return "D";
+    default:
+      return null;
+  }
 }
 
 function formatKickoff(iso: string): string {
@@ -162,7 +172,8 @@ function TransferComparison({
             </span>
           </div>
           <p className="mt-1 text-xs text-on-surface-variant">
-            {statistics.teamName} transfer fees for {statistics.season.replace("-", "/")}
+            {statistics.teamName} transfer fees for{" "}
+            {statistics.season.replace("-", "/")}
           </p>
         </div>
         <Link
@@ -272,9 +283,10 @@ function RecentFormCard({
           </span>
         ) : (
           "—"
-        )}
-      />
-    );
+        )
+      }
+    />
+  );
 }
 
 // Shared match row: short date, "vs" (home) / "at" (away) + opponent,
@@ -292,12 +304,18 @@ function MatchRow({
   const result = resultFor(match);
   const ours = home ? match.scoreHome : match.scoreAway;
   const theirs = home ? match.scoreAway : match.scoreHome;
+  const ourPens = home ? match.penaltyHome : match.penaltyAway;
+  const theirPens = home ? match.penaltyAway : match.penaltyHome;
+  const pens =
+    ourPens != null && theirPens != null ? ` (${ourPens}–${theirPens} p)` : "";
+
   const right =
     showResult && result !== null ? (
       <span
         className={`inline-flex h-6 shrink-0 items-center rounded border px-2 font-data-mono text-xs font-bold ${RESULT_TONES[result]}`}
       >
         {result} {ours}–{theirs}
+        {pens}
       </span>
     ) : (
       <span className="shrink-0 font-data-mono text-xs text-on-surface-variant">

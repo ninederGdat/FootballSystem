@@ -5,7 +5,7 @@ import { useCompetitions } from "../features/competitions/hooks";
 import { ApiError } from "../api/client";
 import { useContextTeam } from "../features/team-context/TeamContext";
 import { getTrackedTeam, TRACKED_TEAMS } from "../lib/teams";
-import { formatLoanDate } from "../lib/format";
+import { formatLoanDate, formatShootout, matchOutcome } from "../lib/format";
 import type {
   MatchSearchQuery,
   MatchStatus,
@@ -121,6 +121,7 @@ function statusBadge(status: MatchStatus): {
 // as "home - away" regardless of which club the row describes.
 function scorePill(match: MatchSummaryDTO): {
   text: string;
+  pens: string | null;
   pillClass: string;
 } {
   const { scoreHome, scoreAway } = match;
@@ -129,30 +130,39 @@ function scorePill(match: MatchSummaryDTO): {
   if (scoreHome === null || scoreAway === null) {
     return {
       text: formatKickoffTime(match.matchDate),
+      pens: null,
       pillClass:
         "bg-surface-container-high text-on-surface-variant font-medium",
     };
   }
 
   const scoreText = `${scoreHome} - ${scoreAway}`;
+  const pens = formatShootout(match.penaltyHome, match.penaltyAway);
 
   if (internal) {
     return {
       text: scoreText,
+      pens,
       pillClass:
         "bg-surface-container-high text-on-surface font-bold border border-outline-variant/40",
     };
   }
 
-  const ours = match.homeOrAway === "home" ? scoreHome : scoreAway;
-  const theirs = match.homeOrAway === "home" ? scoreAway : scoreHome;
+  // Result of the row club; a shootout decides it when the score is level.
+  const outcome = matchOutcome(
+    scoreHome,
+    scoreAway,
+    match.homeOrAway,
+    match.penaltyHome,
+    match.penaltyAway,
+  );
   const tone =
-    ours > theirs
+    outcome === "WIN"
       ? "border bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-      : ours < theirs
+      : outcome === "LOSS"
         ? "border bg-rose-500/10 text-rose-400 border-rose-500/20"
         : "border bg-amber-500/10 text-amber-400 border-amber-500/20";
-  return { text: scoreText, pillClass: tone };
+  return { text: scoreText, pens, pillClass: tone };
 }
 
 function groupByMonth(items: MatchSummaryDTO[]): [string, MatchSummaryDTO[]][] {
@@ -627,6 +637,11 @@ export function MatchListPage() {
                             className={`inline-block font-data-mono text-body-md px-2.5 py-0.5 rounded ${pill.pillClass}`}
                           >
                             {pill.text}
+                            {pill.pens && (
+                              <span className="ml-1.5 text-xs font-normal opacity-80">
+                                (pens {pill.pens})
+                              </span>
+                            )}
                           </span>
                         </td>
                         <td className="py-3 px-4">

@@ -62,6 +62,10 @@ export interface MatchResponse {
   homeOrAway: string | null;
   scoreHome: number | null;
   scoreAway: number | null;
+  // Shootout score in home–away order; null when the match had no shootout.
+  // scoreHome/scoreAway exclude the shootout.
+  penaltyHome: number | null;
+  penaltyAway: number | null;
   status: string;
   events: MatchEventItemResponse[];
   lineup: LineupResponse | null;
@@ -79,6 +83,8 @@ export interface MatchSummaryDTO {
   homeOrAway: "home" | "away";
   scoreHome: number | null;
   scoreAway: number | null;
+  penaltyHome: number | null;
+  penaltyAway: number | null;
   status: MatchStatus;
 }
 

@@ -1,5 +1,10 @@
 import type { MatchResponse } from "../../types/match";
-import { formatMatchDate, formatStatus, matchOutcome } from "../../lib/format";
+import {
+  formatMatchDate,
+  formatShootout,
+  formatStatus,
+  matchOutcome,
+} from "../../lib/format";
 import { getTrackedTeam } from "../../lib/teams";
 
 function fallbackCode(name: string): string {
@@ -27,14 +32,22 @@ export function MatchHeader({ match }: { match: MatchResponse }) {
   const awayName = isHome ? match.opponentName : ourName;
   const homeCode = isHome ? ourCode : fallbackCode(match.opponentName);
   const awayCode = isHome ? fallbackCode(match.opponentName) : ourCode;
-  const homeScore = isHome ? match.scoreHome : match.scoreAway;
-  const awayScore = isHome ? match.scoreAway : match.scoreHome;
+  // score_home / score_away đã theo thứ tự chủ nhà – khách, cùng thứ tự với hai khối tên đội.
+  const homeScore = match.scoreHome;
+  const awayScore = match.scoreAway;
+  const shootout = formatShootout(match.penaltyHome, match.penaltyAway);
 
   const outcome =
     match.scoreHome !== null &&
     match.scoreAway !== null &&
     match.status === "FINISHED"
-      ? matchOutcome(match.scoreHome, match.scoreAway, match.homeOrAway)
+      ? matchOutcome(
+          match.scoreHome,
+          match.scoreAway,
+          match.homeOrAway,
+          match.penaltyHome,
+          match.penaltyAway,
+        )
       : null;
 
   return (
@@ -80,6 +93,11 @@ export function MatchHeader({ match }: { match: MatchResponse }) {
                 {awayScore ?? "-"}
               </span>
             </div>
+            {shootout && (
+              <div className="mt-1.5 font-label-caps text-label-caps font-bold uppercase tracking-wider text-on-surface-variant">
+                Pens {shootout}
+              </div>
+            )}
             {outcome && (
               <div
                 className={`mt-2 flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-label-caps text-label-caps font-bold ${
@@ -92,6 +110,7 @@ export function MatchHeader({ match }: { match: MatchResponse }) {
                   }`}
                 />
                 {outcome}
+                {shootout && outcome !== "DRAW" ? " (PEN)" : ""}
               </div>
             )}
           </div>

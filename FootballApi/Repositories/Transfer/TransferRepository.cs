@@ -143,7 +143,7 @@ public class TransferRepository : ITransferRepository
         ApplyFilters(dataQuery);
         var result = await dataQuery
             .Order("transfer_date", Supabase.Postgrest.Constants.Ordering.Descending)
-            .Order("id", Supabase.Postgrest.Constants.Ordering.Ascending)
+            .Order("id", Supabase.Postgrest.Constants.Ordering.Descending)
             .Range((page - 1) * pageSize, page * pageSize - 1)
             .Get(ct);
 

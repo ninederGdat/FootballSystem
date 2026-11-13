@@ -17,6 +17,7 @@ public class MatchEventRepository : IMatchEventRepository
             .Where(x => x.MatchId == matchId)
             .Order(x => x.Minute, Supabase.Postgrest.Constants.Ordering.Ascending)
             .Order(x => x.EventOrder, Supabase.Postgrest.Constants.Ordering.Ascending)
+            .Order(x => x.Id, Supabase.Postgrest.Constants.Ordering.Ascending)
             .Get(ct);
         return result.Models;
     }

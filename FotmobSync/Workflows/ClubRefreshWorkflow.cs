@@ -75,7 +75,7 @@ public class ClubRefreshWorkflow
             _squadSyncService.SyncAsync(snapshots, cancellationToken));
 
         await RunPhaseAsync("PHASE 1b: Enrich stub players", () =>
-            _playerService.EnrichAsync(batchSize: 10, cancellationToken));
+            _playerService.EnrichAsync(batchSize: 22, cancellationToken));
 
         await RunPhaseAsync("PHASE 2: Transfers", () =>
             _transferSyncService.SyncAsync(snapshots, cancellationToken));   // overload mới, xem bên dưới

@@ -43,8 +43,12 @@ public class PlayerSyncService
             }
 
 
-            var profileTeamId = playerRaw.PrimaryTeam?.TeamId;   // đối chiếu tên/kiểu property trong PlayerRaw
-            var resolvedTeamId = useProfileTeam && profileTeamId.HasValue
+            var profileTeamId = playerRaw.PrimaryTeam?.TeamId;
+            // players.team_id có FK tới teams (chỉ chứa CLB theo dõi): chỉ dùng team
+            // của hồ sơ khi nó được theo dõi, còn lại giữ teamId đã cho.
+            var resolvedTeamId = useProfileTeam
+                                 && profileTeamId.HasValue
+                                 && await IsTrackedTeamAsync(profileTeamId.Value)
                 ? profileTeamId.Value
                 : teamId;
 
@@ -56,11 +60,11 @@ public class PlayerSyncService
             // If the player already exists, update it instead of inserting it.
             playerClean.TransferStatus = existingPlayer?.TransferStatus ?? playerClean.TransferStatus;
 
+            if (existingPlayer != null)
+                playerClean.CurrentTeamId = existingPlayer.CurrentTeamId;
+
             if (existingPlayer is { IsStub: false })
-            {
                 playerClean.TeamId = existingPlayer.TeamId;
-                playerClean.CurrentTeamId = existingPlayer.CurrentTeamId; // tránh bị upsert ghi null
-            }
 
             if (existingPlayer is { IsStub: false } && IsPlayerPayloadUnchanged(playerClean, existingPlayer))
             {
@@ -107,7 +111,7 @@ public class PlayerSyncService
 
 
 
-    public async Task EnrichAsync(int batchSize = 10, CancellationToken cancellationToken = default)
+    public async Task EnrichAsync(int batchSize = 25, CancellationToken cancellationToken = default)
     {
         var stubs = await _supabase.From<PlayerClean>()
             .Filter("is_stub", Constants.Operator.Equals, "true")
@@ -150,5 +154,14 @@ public class PlayerSyncService
                 StringComparison.Ordinal)
                 ;
 
+    }
+
+    private HashSet<long>? _trackedTeamIds;
+
+    private async Task<bool> IsTrackedTeamAsync(long teamId)
+    {
+        _trackedTeamIds ??= (await _supabase.From<TeamClean>().Get())
+            .Models.Select(t => t.TeamId).ToHashSet();
+        return _trackedTeamIds.Contains(teamId);
     }
 }

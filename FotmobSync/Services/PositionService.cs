@@ -10,6 +10,8 @@ namespace FotmobSync.Services
     {
         private readonly Supabase.Client _supabase;
         private readonly ILogger<PositionService> _logger;
+        private readonly HashSet<string> _ensuredPositions = new();
+        // private readonly HashSet<string> _ensuredRoles = new();
 
         public PositionService(SupabaseClientFactory factory, ILogger<PositionService> logger)
         {
@@ -44,22 +46,30 @@ namespace FotmobSync.Services
                     return null;
                 }
 
-                var position = new PositionClean
+                if (!_ensuredPositions.Contains(positionCode))
                 {
-                    PositionCode = positionCode,
-                    PositionName = positionName,
-                    XCoord = 0.5,
-                    YCoord = 0.5,
-                    IsGoalkeeper = positionCode == "GK"
-                };
+                    var position = new PositionClean
+                    {
+                        PositionCode = positionCode,
+                        PositionName = positionName,
+                        XCoord = 0.5,
+                        YCoord = 0.5,
+                        IsGoalkeeper = positionCode == "GK"
+                    };
 
-                await _supabase
-                    .From<PositionClean>()
-                    .Upsert(position, new() { OnConflict = "position_code" });
+                    await _supabase
+                        .From<PositionClean>()
+                        .Upsert(position, new()
+                        {
+                            OnConflict = "position_code",
+                            DuplicateResolution = Supabase.Postgrest.QueryOptions.DuplicateResolutionType.IgnoreDuplicates
+                        });
 
-                _logger.LogInformation("✅ Position upserted successfully: {Code} - {Name}", positionCode, positionName);
+                    _ensuredPositions.Add(positionCode);
+                    _logger.LogInformation("Position ensured: {Code} - {Name}", positionCode, positionName);
+                }
 
-                await UpsertPositionRoleAsync(positionCode, rawLabel ?? positionName, rawKey!);
+                // await UpsertPositionRoleAsync(positionCode, rawLabel ?? positionName, rawKey!);
                 return positionCode;
             }
             catch (Exception ex)
@@ -69,26 +79,28 @@ namespace FotmobSync.Services
                 return null;
             }
         }
-        private async Task UpsertPositionRoleAsync(string positionCode, string roleName, string fotmobKey)
-        {
-            try
-            {
-                var role = new PositionRoleClean
-                {
-                    PositionCode = positionCode,
-                    RoleName = roleName,
-                    RoleShort = fotmobKey,
-                    IsPremium = false
-                };
-
-                await _supabase
-                    .From<PositionRoleClean>()
-                    .Upsert(role, new() { OnConflict = "position_code, role_name" });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Không upsert được PositionRole cho {Code}", (object)positionCode);
-            }
-        }
+        // private async Task UpsertPositionRoleAsync(string positionCode, string roleName, string fotmobKey)
+        // {
+        //     try
+        //     {
+        //         var role = new PositionRoleClean
+        //         {
+        //             PositionCode = positionCode,
+        //             RoleName = roleName,
+        //             RoleShort = fotmobKey,
+        //             IsPremium = false
+        //         };
+        //         var key = $"{positionCode}|{roleName}";
+        //         if (_ensuredRoles.Contains(key)) return;
+        //         await _supabase
+        //             .From<PositionRoleClean>()
+        //             .Upsert(role, new() { OnConflict = "position_code, role_name" });
+        //         _ensuredRoles.Add(key);
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogWarning(ex, "Không upsert được PositionRole cho {Code}", (object)positionCode);
+        //     }
+        // }
     }
 }

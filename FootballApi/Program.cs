@@ -18,6 +18,8 @@ using FootballApi.Services.Season;
 using FootballApi.Services.Transfer;
 using FootballSystem.Shared.Infrastructure;
 using Microsoft.Extensions.Options;
+using FootballApi.Common.Health;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -85,6 +87,8 @@ builder.Services.AddScoped<ITransferRepository, TransferRepository>();
 builder.Services.AddScoped<ITransferService, TransferService>();
 builder.Services.AddScoped<ISeasonService, SeasonService>();
 
+builder.Services.AddHealthChecks()
+    .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
 
 // --- Hosting (Render) -----------------------------------------------------
 // Render injects the port to listen on via the PORT environment variable.
@@ -127,7 +131,16 @@ app.UseCors(FrontendCorsPolicy);
 app.UseAuthorization();
 
 app.MapControllers();
-// Lightweight liveness endpoint for Render / uptime pings. Does not touch Supabase.
+
+// Liveness: process is up. Does not touch Supabase. Render keeps using this one.
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+
+// Readiness: dependencies are reachable (Supabase). 200 = ready, 503 = not ready.
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready"),
+    ResponseWriter = HealthResponseWriter.WriteAsync
+});
+
 
 app.Run();

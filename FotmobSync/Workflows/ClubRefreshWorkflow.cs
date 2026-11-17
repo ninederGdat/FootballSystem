@@ -16,6 +16,8 @@ public class ClubRefreshWorkflow
     private readonly ITransferStatusSyncService _transferStatusSyncService;
     private readonly ILineupBackfillService _lineupBackfillService;
     private readonly IPlayerSyncService _playerService;
+    private readonly ISyncRunRecorder _recorder;
+
     private readonly ILogger<ClubRefreshWorkflow> _logger;
 
     public ClubRefreshWorkflow(
@@ -28,6 +30,7 @@ public class ClubRefreshWorkflow
         ITransferStatusSyncService transferStatusSyncService,
         ILineupBackfillService lineupBackfillService,
         IPlayerSyncService playerService,
+        ISyncRunRecorder recorder,
         ILogger<ClubRefreshWorkflow> logger)
     {
         _teamDataModule = teamDataModule;
@@ -40,6 +43,7 @@ public class ClubRefreshWorkflow
         _transferStatusSyncService = transferStatusSyncService;
         _playerService = playerService;
 
+        _recorder = recorder;
         _logger = logger;
     }
 
@@ -55,15 +59,29 @@ public class ClubRefreshWorkflow
 
         // Load snapshot cho tất cả team
         var snapshots = new List<TeamDataSnapshot>();
+        var loadErrors = new List<string>();
+        var loadStartedAt = DateTime.UtcNow;
         foreach (var id in teamIds)
         {
             try { snapshots.Add(await _teamDataModule.LoadAsync(id)); }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Cannot load snapshot for team {TeamId}", id);
+                loadErrors.Add($"Team {id}: {ex.Message}");
             }
         }
-        if (snapshots.Count == 0) return;
+
+        await _recorder.RecordPhaseAsync(
+            "Load team snapshots",
+            loadErrors.Count == 0,
+            loadStartedAt,
+            loadErrors.Count == 0 ? null : string.Join("; ", loadErrors));
+
+        if (snapshots.Count == 0)
+        {
+            _recorder.MarkAborted();
+            return;
+        }
 
         await RunPhaseAsync("PHASE 0: Teams", async () =>
         {
@@ -76,6 +94,7 @@ public class ClubRefreshWorkflow
 
         await RunPhaseAsync("PHASE 1b: Enrich stub players", () =>
             _playerService.EnrichAsync(batchSize: 22, cancellationToken));
+        await _recorder.RecordPendingStubsAsync();
 
         await RunPhaseAsync("PHASE 2: Transfers", () =>
             _transferSyncService.SyncAsync(snapshots, cancellationToken));   // overload mới, xem bên dưới
@@ -106,12 +125,18 @@ public class ClubRefreshWorkflow
     private async Task RunPhaseAsync(string name, Func<Task> phase)
     {
         _logger.LogInformation("{Phase}", name);
-        try { await phase(); }
+        var startedAt = DateTime.UtcNow;
+        try
+        {
+            await phase();
+            await _recorder.RecordPhaseAsync(name, succeeded: true, startedAt, error: null);
+        }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
             // Một pha lỗi không làm hỏng các pha sau: nhờ stub, các pha không còn phụ thuộc cứng nhau.
             _logger.LogError(ex, "{Phase} failed", name);
+            await _recorder.RecordPhaseAsync(name, succeeded: false, startedAt, ex.Message);
         }
     }
 

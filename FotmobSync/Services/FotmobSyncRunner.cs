@@ -5,13 +5,16 @@ namespace FotmobSync.Services;
 public class FotmobSyncRunner : IFotmobSyncRunner
 {
     private readonly ClubRefreshWorkflow _workflow;
+    private readonly ISyncRunRecorder _recorder;
     private readonly ILogger<FotmobSyncRunner> _logger;
 
     public FotmobSyncRunner(
         ClubRefreshWorkflow workflow,
+        ISyncRunRecorder recorder,
         ILogger<FotmobSyncRunner> logger)
     {
         _workflow = workflow;
+        _recorder = recorder;
         _logger = logger;
     }
 
@@ -23,8 +26,17 @@ public class FotmobSyncRunner : IFotmobSyncRunner
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        _logger.LogInformation("Syncing teams {TeamIds}", string.Join(",", teamsToSync));
-
-        await _workflow.ExecuteAsync(teamsToSync, cancellationToken);
+        await _recorder.StartAsync();
+        var completed = false;
+        try
+        {
+            _logger.LogInformation("Syncing teams {TeamIds}", string.Join(",", teamsToSync));
+            await _workflow.ExecuteAsync(teamsToSync, cancellationToken);
+            completed = true;
+        }
+        finally
+        {
+            await _recorder.FinishAsync(completed);
+        }
     }
 }

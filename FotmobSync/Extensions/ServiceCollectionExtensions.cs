@@ -49,6 +49,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ClubRefreshWorkflow>();
         services.AddScoped<MatchLineupWorkflow>();
         services.AddScoped<IFotmobSyncRunner, FotmobSyncRunner>();
+        services.AddScoped<ISyncRunRecorder, SyncRunRecorder>();
         // Mapping Services
         services.AddSingleton<IFotmobPositionMapper, FotmobPositionMapper>();
         services.AddSingleton<IPositionRoleResolver, PositionRoleResolver>();

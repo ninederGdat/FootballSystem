@@ -161,6 +161,7 @@ dotnet test FotmobSync.Tests
 
 - Runtime: Docker; Dockerfile path `FootballApi/Dockerfile`; build context is the repository root (`.`); leave _Root Directory_ empty.
 - Health check path: `/health`. The API reads its port from the `PORT` variable that Render provides.
+- `/health` is liveness only (no database access) and is what Render uses. `/health/ready` also checks that Supabase is reachable and returns `503` if not; do not point Render at it, because a database blip would take the whole API out of rotation.
 - Environment variables:
 
 | Key                       | Description                                                                         |

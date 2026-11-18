@@ -3,6 +3,7 @@ import { ClubSwitcher } from "../../features/team-context/ClubSwitcher";
 import { TeamContextProvider } from "../../features/team-context/TeamContext";
 import { SidebarNavItem } from "./SidebarNavItem";
 import { SidebarLogo } from "./SidebarLogo";
+import { NotificationBell } from "./NotificationBell";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: "dashboard" },
@@ -54,15 +55,7 @@ function AppShellLayout() {
               search
             </span>
           </button>
-          <button
-            type="button"
-            aria-label="Notifications"
-            className="flex h-9 w-9 items-center justify-center rounded text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface"
-          >
-            <span className="material-symbols-outlined text-[20px]">
-              notifications
-            </span>
-          </button>
+          <NotificationBell />
           <button
             type="button"
             aria-label="Settings"

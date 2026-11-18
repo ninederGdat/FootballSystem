@@ -100,16 +100,43 @@ public class SyncRunServiceTests
     }
 
     [Fact]
-    public async Task GetRecentAsync_UnspecifiedKindTimestamps_AreTreatedAsUtc()
+    public async Task GetRecentAsync_UnspecifiedKind_IsTreatedAsProcessLocalTime()
     {
+        // Supabase.Postgrest 4.1.0 returns timestamptz as Unspecified local wall-clock.
+        var instant = Now - TimeSpan.FromHours(2);
         var run = Run(1, "success", TimeSpan.FromHours(2), TimeSpan.FromMinutes(10));
-        run.StartedAt = DateTime.SpecifyKind(run.StartedAt, DateTimeKind.Unspecified);
+        run.StartedAt = DateTime.SpecifyKind(
+            TimeZoneInfo.ConvertTimeFromUtc(instant, TimeZoneInfo.Local),
+            DateTimeKind.Unspecified);
         var repo = new FakeSyncRunRepository([run]);
 
         var result = await Create(repo).GetRecentAsync(null);
 
         Assert.Equal(DateTimeKind.Utc, result[0].StartedAt.Kind);
-        Assert.Equal(Now - TimeSpan.FromHours(2), result[0].StartedAt);
+        Assert.Equal(instant, result[0].StartedAt);
+    }
+
+    [Fact]
+    public void ToUtc_Unspecified_UsesTheGivenZone()
+    {
+        var utcPlus7 = TimeZoneInfo.CreateCustomTimeZone("UTC+7", TimeSpan.FromHours(7), "UTC+7", "UTC+7");
+        var wall = new DateTime(2026, 11, 17, 17, 14, 36, DateTimeKind.Unspecified);
+
+        var result = SyncRunService.ToUtc(wall, utcPlus7);
+
+        Assert.Equal(new DateTime(2026, 11, 17, 10, 14, 36), result);
+        Assert.Equal(DateTimeKind.Utc, result.Kind);
+    }
+
+    [Fact]
+    public void ToUtc_Utc_IsUnchanged()
+    {
+        var utc = new DateTime(2026, 11, 17, 10, 14, 36, DateTimeKind.Utc);
+
+        var result = SyncRunService.ToUtc(utc, TimeZoneInfo.Utc);
+
+        Assert.Equal(utc, result);
+        Assert.Equal(DateTimeKind.Utc, result.Kind);
     }
 
     [Fact]

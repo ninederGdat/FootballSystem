@@ -75,7 +75,18 @@ public class SyncRunService : ISyncRunService
     }
 
     // The client may hand back Local or Unspecified kinds; always expose UTC.
-    private static DateTime AsUtc(DateTime value) => value.Kind == DateTimeKind.Unspecified
-        ? DateTime.SpecifyKind(value, DateTimeKind.Utc)
-        : value.ToUniversalTime();
+    // Supabase.Postgrest 4.1.0 returns timestamptz as Unspecified holding the
+    // process-local wall-clock (fixed upstream in 4.2.0, which returns Local).
+    // Treating Unspecified as UTC is wrong on any machine not running in UTC.
+    private static DateTime AsUtc(DateTime value) => ToUtc(value, TimeZoneInfo.Local);
+
+    public static DateTime ToUtc(DateTime value, TimeZoneInfo localZone) => value.Kind switch
+    {
+        DateTimeKind.Utc => value,
+        DateTimeKind.Local => value.ToUniversalTime(),
+        // A wall-clock inside a DST gap cannot be converted; keep it rather than throw a 500.
+        _ => localZone.IsInvalidTime(value)
+            ? DateTime.SpecifyKind(value, DateTimeKind.Utc)
+            : TimeZoneInfo.ConvertTimeToUtc(value, localZone)
+    };
 }

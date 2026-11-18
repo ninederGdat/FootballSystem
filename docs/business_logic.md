@@ -173,6 +173,7 @@ The `FootballApi` project is an ASP.NET Core controller-based API that:
 
 Implemented read routes include:
 
+- `GET /api/sync/runs` (filter: `limit`, default 5, max 20): recent GitHub Actions sync runs with status (`running | success | partial | failed | interrupted`), duration, trigger, run URL, pending stub count, and the names of failed phases. A `running` run older than 35 minutes is reported as `interrupted`. Local and Quartz runs (no trigger) are excluded.
 - `GET /api/matches` (filters: `fromDate`, `toDate`, `season`, `opponent`, `status`, `page`, `pageSize`) and `GET /api/matches/{matchId}`
 - `GET /api/matches/{matchId}/lineup`
 - `GET /api/players` (filters: `search`, `teamId`, `positionCode`, `nationality`, `transferStatus`, `page`, `pageSize`), `GET /api/players/{playerId}`, and `GET /api/players/{playerId}/appearances`

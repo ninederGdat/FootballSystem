@@ -16,6 +16,8 @@ using FootballApi.Services.MatchEvent;
 using FootballApi.Services.Player;
 using FootballApi.Services.Season;
 using FootballApi.Services.Transfer;
+using FootballApi.Repositories.SyncRun;
+using FootballApi.Services.SyncRun;
 using FootballSystem.Shared.Infrastructure;
 using Microsoft.Extensions.Options;
 using FootballApi.Common.Health;
@@ -86,6 +88,9 @@ builder.Services.AddScoped<IMatchEventService, MatchEventService>();
 builder.Services.AddScoped<ITransferRepository, TransferRepository>();
 builder.Services.AddScoped<ITransferService, TransferService>();
 builder.Services.AddScoped<ISeasonService, SeasonService>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<ISyncRunRepository, SyncRunRepository>();
+builder.Services.AddScoped<ISyncRunService, SyncRunService>();
 
 builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);

@@ -10,7 +10,18 @@ interface SyncRunItemProps {
 export function SyncRunItem({ run, unread }: SyncRunItemProps) {
   const view = SYNC_RUN_STATUS_VIEWS[run.status];
   const timestamp = formatRelativeTime(run.finishedAt ?? run.startedAt);
-  const linkable = run.runUrl !== null && run.runUrl.startsWith("https://");
+  const runUrl =
+    run.runUrl !== null && run.runUrl.startsWith("https://")
+      ? run.runUrl
+      : null;
+  const triggerLabel =
+    run.trigger === null
+      ? null
+      : run.trigger === "schedule"
+        ? "Scheduled"
+        : run.trigger === "workflow_dispatch"
+          ? "Manual run"
+          : run.trigger;
 
   return (
     <li
@@ -66,20 +77,25 @@ export function SyncRunItem({ run, unread }: SyncRunItemProps) {
         )}
       </div>
 
-      {(run.trigger !== null || linkable) && (
+      {(triggerLabel !== null || runUrl !== null) && (
         <div className="mt-2.5 flex items-center justify-between border-t border-outline-variant/30 pt-2">
-          <span className="text-[10px] text-on-surface-variant">
-            {run.trigger ?? "Manual run"}
-          </span>
-          {linkable && (
+          {triggerLabel !== null && (
+            <span className="text-[10px] text-on-surface-variant">
+              {triggerLabel}
+            </span>
+          )}
+          {runUrl !== null && (
             <a
-              href={run.runUrl!}
+              href={runUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-0.5 text-[11px] font-medium text-primary hover:underline"
             >
               View run
-              <span className="material-symbols-outlined text-[13px]">
+              <span
+                className="material-symbols-outlined text-[13px]"
+                aria-hidden="true"
+              >
                 north_east
               </span>
             </a>
